@@ -1,75 +1,60 @@
-mkdir -p $CSCRATCH/Obiwan/dr9m
+# Obiwan
 
-cd $CSCRATCH/Obiwan/dr9m
+**Obiwan** is a Monte Carlo method for adding fake galaxies and stars to images from the Legacy Survey and re-processing the modified images with the [Legacysurvey/Tractor pipeline](https://github.com/legacysurvey/legacypipe). The pipeline forward models galaxies and stars in the multi-color images by detecting sources with Signal to Noise (S/N) greater than 6 and minimizing the regularized L2 Loss function for various models for the shapes of stars and galaxies.
 
-git clone https://github.com/DriftingPig/obiwan_dr9m.git
+## Credits
 
-mv obiwan_dr9m obiwan_code
-
-mkdir obiwan_data
-
-mkdir obiwan_out
-
-cd obiwan_data
-
-cp /global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/ccds-annotated-* ./
-
-cp /global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/survey-* ./
-
-ln -s /global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/calib/ ./
-
-ln -s /global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/images/ ./
-
-cd ../obiwan_out
-
-#choose a name for your run, it's the same as the environment varible name_for_run, this time we choose 'test'
-
-mkdir test
-
-cd test
-
-mkdir randoms_chunk
-
-#the random you generated in the way you want, there is no universal code for that. For testing, copy a fits file from my directory:
-
-cp /global/cscratch1/sd/huikong/Obiwan/stacked_randoms.fits ./randoms_chunk
-
-#make a bricklist for all the bricks you want to process. For testing, you can copy a demo one first
-
-cp /global/cscratch1/sd/huikong//Obiwan/dr9m/obiwan_code/brickstat/real_brick_lists/bricks_dr9f_south.txt  bricklist.txt 
-
-cd ../../obiwan_code/brickstat
-
-mkdir test
-
-#this will generate a directoy called 'test', with file 'FinishedBricks.txt' and 'UnfinishedBricks.txt' 
-
-python brickstat.py --name_for_run test --rs rs0 --real_bricks_fn bricks_dr9f_south.txt
-
-cd ../random_division
+Note this git repo is in construction.
+All credits to Hui Kong, Kaylan Burleigh, John Moustakas.
+See the [offical acknowledgements](http://legacysurvey.org/#Acknowledgements) for the Legacy Survey.
+Applied to eBOSS ELG in [Obiwan on eBOSS](https://arxiv.org/abs/2007.08992).
 
 
-#OPEN slurm_submit.sh, change 'export name_for_run=dr9m_test' to 'export name_for_run=test'
+## Documentation
 
-#divide the randoms into each bricks for future process
+Documentation (in construction) is hosted on Read the Docs, [Obiwan Docs](https://obiwandr9.readthedocs.io/).
 
-sbatch slurm_submit.sh
+## Installation
 
-#wait until job is finished. It generates per brick randoms in $CSCRATCH/Obiwan/dr9m/obiwan_out/test/divided_randoms, you can take a look
+A Docker image is available on Docker Hub:
+<https://hub.docker.com/r/adematti/obiwan>
+```
+docker pull adematti/obiwan:dr9.3
+```
+To run on-the-fly:
+```
+docker run adematti/obiwan:dr9.3 ./yourscript.sh
+```
+Or in interactive mode, you can bind mount your directory `obiwanabsolutepath`:
+```
+docker run -v obiwanabsolutepath:/src/obiwan -it adematti/obiwan:dr9.3
+```
+which allows you to work as usual (type `exit` to exit).<br>
+On NERSC:
+```
+shifterimg -v pull adematti/obiwan:dr9.3
+shifter --module=mpich-cle6 --image=adematti/obiwan:dr9.3 ./yourscript.sh
+```
 
-cd ../obiwan_run
+## License
 
-mkdir test
+**Obiwan** is free software licensed under a 3-clause BSD-style license. For details see the [LICENSE](https://github.com/adematti/obiwan/blob/master/LICENSE).
 
-cd test
+## Requirements
 
-mkdir slurm_output
-
-#OPEN slurm_all_bricks.sh, change 'export name_for_run=dr9m_test' to 'export name_for_run=test', and you need to decide the time and number of nodes need for the run. The nodes  must be bigger than 2
-
-sbatch slurm_all_bricks.sh
-
-If you have any questions and problem during setup, my email address is: kong.291@osu.edu
-
-
-(More analysis code will be posted when I clean them up)
+-   Python 3
+-   numpy
+-   scipy
+-   matplotlib
+-   fitsio
+-   cython
+-   mpi4py
+-   h5py
+-   pandas
+-   pytest
+-   astropy
+-   photutils
+-   astrometry.net
+-   tractor
+-   legacypipe
+-   galsim

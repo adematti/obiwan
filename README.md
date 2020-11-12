@@ -1,3 +1,5 @@
+[![Docs](https://readthedocs.org/projects/obiwandr9/badge/?version=latest)](http://obiwandr9.readthedocs.org/en/latest/)
+
 # Obiwan
 
 **Obiwan** is a Monte Carlo method for adding fake galaxies and stars to images from the Legacy Survey and re-processing the modified images with the [Legacysurvey/Tractor pipeline](https://github.com/legacysurvey/legacypipe). The pipeline forward models galaxies and stars in the multi-color images by detecting sources with Signal to Noise (S/N) greater than 6 and minimizing the regularized L2 Loss function for various models for the shapes of stars and galaxies.

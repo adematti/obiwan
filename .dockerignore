@@ -1,0 +1,16 @@
+# Thumbnails
+_*
+
+# Packages
+**/*.egg
+**/*.egg-info
+**/.astropy
+**/.cache
+**/.config
+**/pytest_cache
+**/dist
+**/eggs
+**/dust
+
+# Unit test / coverage reports
+**/.coverage

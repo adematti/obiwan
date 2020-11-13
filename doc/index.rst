@@ -40,8 +40,8 @@ This website is under construction. Previous version, by Kaylan Burleigh and Joh
 Introduction
 ============
 
-**Obiwan** is a Monte Carlo method for adding fake galaxies to `Legacy Survey <http://legacysurvey.org>`_ imaging data,
-running the `legacypipe <https://github.com/legacysurvey/legacypipe>`_ pipeline, and repeating.
+**Obiwan** is a Monte Carlo method for adding fake galaxies to `Legacy Survey <http://legacysurvey.org>`_ images,
+and re-processing the modified images with the `legacypipe <https://github.com/legacysurvey/legacypipe>`_.
 The **legacypipe** documentation is available here: `legacypipe docs <https://legacypipe.readthedocs.io/>`_.
 
 

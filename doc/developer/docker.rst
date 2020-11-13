@@ -5,6 +5,7 @@ First create an account ``youraccount`` at `<https://hub.docker.com>`_.
 
 To build, go into the root directory and run::
 
+  docker-compose start
   docker-compose build
 
 Or, alternatively::

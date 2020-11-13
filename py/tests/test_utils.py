@@ -1,3 +1,4 @@
+import os
 import tempfile
 import logging
 import argparse
@@ -8,16 +9,16 @@ setup_logging(logging.DEBUG)
 
 def test_paths():
     fn = get_survey_file('tests','bricks',brickname='2599p187',fileid=0,rowstart=0,skipid=0)
-    assert fn == 'tests/survey-bricks.fits.gz'
+    assert os.path.normpath(fn) == os.path.normpath('tests/survey-bricks.fits.gz')
     fn = get_output_file('.','obiwan-randoms',brickname='2599p187',fileid=1,rowstart=2,skipid=3)
-    assert fn == './obiwan/259/2599p187/file1_rs2_skip3/randoms-2599p187.fits'
+    assert os.path.normpath(fn) == os.path.normpath('./obiwan/259/2599p187/file1_rs2_skip3/randoms-2599p187.fits')
 
 def test_plots():
-    with tempfile.TemporaryDirectory() as dir:
+    with tempfile.TemporaryDirectory() as tmp_dir:
         @saveplot()
         def plot(ax,label='label'):
             ax.plot(np.linspace(0.,1.,10))
-        plot(fn=dir+'/plot.png')
+        plot(fn=os.path.join(tmp_dir,'plot.png'))
 
 def test_misc():
     d1 = {'a':1}

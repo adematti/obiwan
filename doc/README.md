@@ -1,11 +1,11 @@
 # Building the documentation
 
 The documentation can be built from the Docker image, e.g. bind mount your directory `obiwanabsolutepath`:
-```
+```bash
 docker run -v obiwanabsolutepath:/src/obiwan -it adematti/obiwan:dr9.3
 ```
 Then:
-```
+```bash
 cd obiwan/doc
 make html
 ```

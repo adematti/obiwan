@@ -1,6 +1,4 @@
-'''
-Convenient functions to handle Obiwan inputs/outputs.
-'''
+"""Convenient functions to handle Obiwan inputs/outputs."""
 
 import os
 import sys
@@ -8,21 +6,18 @@ import logging
 import functools
 import numpy as np
 from matplotlib import pyplot as plt
-from legacypipe.survey import wcs_for_brick
 from astrometry.libkd import spherematch
 from .kenobi import LegacySurveySim
 
 logger = logging.getLogger('obiwan.utils')
 
 def setup_logging(level=logging.INFO):
-    '''
-    Set up logging, legacypipe style...
-    '''
+    """Set up logging, legacypipe style..."""
     logging.basicConfig(level=level, format='%(message)s', stream=sys.stdout)
 
 def get_survey_file(survey_dir,filetype,brickname=None,**kwargs_file):
-    '''
-    Returns survey file name.
+    """
+    Return survey file name.
 
     survey_dir : string
         Survey directory.
@@ -34,14 +29,14 @@ def get_survey_file(survey_dir,filetype,brickname=None,**kwargs_file):
         Brick name.
 
     kwargs_file : dict
-        Other arguments to file paths (fileid, rowstart, skipid).
-    '''
+        Other arguments to file paths (``fileid``, ``rowstart``, ``skipid``).
+    """
     survey = LegacySurveySim(survey_dir=survey_dir,kwargs_file=kwargs_file)
     return survey.find_file(filetype,brick=brickname,output=False)
 
 def get_output_file(output_dir,filetype,brickname=None,**kwargs_file):
-    '''
-    Returns Obiwan output file name.
+    """
+    Return Obiwan output file name.
 
     output_dir : string
         Obiwan output directory.
@@ -59,8 +54,8 @@ def get_output_file(output_dir,filetype,brickname=None,**kwargs_file):
         Brick name.
 
     kwargs_file : dict
-        Other arguments to file paths (fileid, rowstart, skipid).
-    '''
+        Other arguments to file paths (``fileid``, ``rowstart``, ``skipid``).
+    """
     survey = LegacySurveySim(output_dir=output_dir,kwargs_file=kwargs_file)
     return survey.find_file(filetype,brick=brickname,output=True)
 
@@ -88,36 +83,33 @@ def saveplot(giveax=True):
     return decorator
 
 def savefig(fn,bbox_inches='tight',pad_inches=0.1,dpi=200,**kwargs):
-    '''
-    Saves matplotlib figure to fn.
-    '''
+    """Save matplotlib figure to ``fn``."""
     mkdir(os.path.dirname(fn))
     logger.info('Saving figure to %s.' % fn)
     plt.savefig(fn,bbox_inches=bbox_inches,pad_inches=pad_inches,dpi=dpi,**kwargs)
     plt.close(plt.gcf())
 
-def mkdir(dir):
-    '''
-    Checks if dir exists, if not creates it.
-    '''
-    try: os.makedirs(dir) #MPI...
+def mkdir(dirnm):
+    """Check if ``dirnm`` exists, if not create it."""
+    try: os.makedirs(dirnm) #MPI...
     except OSError: return
 
 def get_git_version(dirnm=None):
-    '''
+    """
+    Run ``git describe`` in the current directory (or given ``dirnm``) and return the result as a string.
+
     Taken from https://github.com/legacysurvey/legacypipe/blob/master/py/legacypipe/survey.py.
-    Runs 'git describe' in the current directory (or given dir) and
-    returns the result as a string.
 
     Parameters
     ----------
     dirnm : string
-        If non-None, "cd" to the given directory before running 'git describe'
+        If non-None, ``cd`` to the given directory before running ``git describe``.
 
     Returns
     -------
-    Git version string
-    '''
+    version : string
+        Git version string.
+    """
     from astrometry.util.run_command import run_command
     cmd = ''
     if dirnm is None:
@@ -134,17 +126,15 @@ def get_git_version(dirnm=None):
     return version
 
 def dict_default(self,other):
-    '''
-    Updates other with self and returns the result.
-    '''
+    """Update other with ``self`` and return the result."""
     toret = {}
     toret.update(other)
     toret.update(self)
     return toret
 
 def get_parser_args(parser,exclude=['help']):
-    '''
-    Returns parser list of 'dest'.
+    """
+    Return parser list of ``dest``.
 
     Parameters
     ----------
@@ -157,29 +147,29 @@ def get_parser_args(parser,exclude=['help']):
     Returns
     -------
     args : list
-        Parser list of 'dest'.
-
-    '''
+        Parser list of ``dest``.
+    """
     return [act.dest for act in parser._actions if act.dest not in exclude]
 
 def sample_ra_dec(size=None,radecbox=[0.,360.,-90.,90.],rng=None,seed=None):
-    '''
-    Sample uniform ra, dec coordinates in radecbox.
+    """
+    Sample uniform ra, dec coordinates in ``radecbox``.
+
     Taken from https://github.com/desihub/imaginglss/blob/master/scripts/imglss-mpi-make-random.py.
 
     Parameters
     ----------
     size : int, default=None
-        Number of objects. If None, only a single tuple ra,dec will be sampled.
+        Number of objects. If ``None``, only a single tuple ra, dec will be sampled.
 
     radecbox : list, default=[0.,360.,-90.,90.]
         ramin, ramax, decmin, decmax.
 
     rng : np.random.RandomState, default=None
-        Random state; if None, build RandomState from seed.
+        Random state; If ``None``, build RandomState from ``seed``.
 
     seed : int, default=None
-        Random seed, only used if rng is None.
+        Random seed, only used if ``rng`` is None.
 
     Returns
     -------
@@ -188,7 +178,7 @@ def sample_ra_dec(size=None,radecbox=[0.,360.,-90.,90.],rng=None,seed=None):
 
     dec : float, ndarray
         Declination (degree).
-    '''
+    """
     if rng is None:
         rng = np.random.RandomState(seed=seed)
 
@@ -205,8 +195,10 @@ def sample_ra_dec(size=None,radecbox=[0.,360.,-90.,90.],rng=None,seed=None):
     return ra, dec
 
 def match_radec(ra1,dec1,ra2,dec2,radius_in_degree=None,return_distance=False,notself=False,nearest=True):
-    '''
-    Match ra2,dec2 to ra1,dec1. All quantities in degree.
+    """
+    Match ra2,dec2 to ra1,dec1.
+
+    All quantities in degree.
     Uses https://github.com/dstndstn/astrometry.net/blob/master/libkd/spherematch.py.
 
     Parameters
@@ -227,13 +219,13 @@ def match_radec(ra1,dec1,ra2,dec2,radius_in_degree=None,return_distance=False,no
         If not None, maximum radius (degree) to match ra, dec pairs.
 
     return_distance : bool, default=False
-        If True, return distance.
+        If ``True``, return distance.
 
     notself : bool, default=False
-        If True, avoids returning 'identity' matches, i.e. ra1,dec1 == ra2,dec2.
+        If ``True``, avoids returning 'identity' matches, i.e. ra1,dec1 == ra2,dec2.
 
     nearest : bool, default=True
-        If True, returns only the nearest match in (ra2,dec2) for each point in (ra1,dec1).
+        If ``True``, returns only the nearest match in (ra2,dec2) for each point in (ra1,dec1).
         Else, returns all matches (index1 and index2 are not made of unique elements).
 
     Returns
@@ -246,7 +238,7 @@ def match_radec(ra1,dec1,ra2,dec2,radius_in_degree=None,return_distance=False,no
 
     distance : ndarray
         Distance (degree).
-    '''
+    """
     provided_radius = radius_in_degree is not None
     if not provided_radius: radius_in_degree=360.
     index1,index2,distance = spherematch.match_radec(ra1,dec1,ra2,dec2,radius_in_degree,notself=notself,nearest=nearest)
@@ -259,8 +251,8 @@ def match_radec(ra1,dec1,ra2,dec2,radius_in_degree=None,return_distance=False,no
     return index1,index2
 
 def mask_collisions(ra, dec, radius_in_degree=5./3600.):
-    '''
-    Returns mask of collided objects.
+    """
+    Return mask of collided objects.
 
     Parameters
     ----------
@@ -277,14 +269,12 @@ def mask_collisions(ra, dec, radius_in_degree=5./3600.):
     -------
     mask : bool ndarray
         Mask of collided objects.
-
-    '''
-
+    """
     skip = set()
-    for ii in range(len(ra)):
+    for ii,(ra_,dec_) in enumerate(zip(ra,dec)):
         if ii in skip: continue
-        i,j = match_radec(ra[ii],dec[ii],ra,dec,radius_in_degree,
-                            notself=False,nearest=False)
+        j = match_radec(ra_,dec_,ra,dec,radius_in_degree,
+                            notself=False,nearest=False)[1]
         skip |= set(j[j!=ii]) # removes self-pair
     mask = np.zeros_like(ra,dtype=np.bool_)
     skip = np.array(list(skip))
@@ -293,8 +283,8 @@ def mask_collisions(ra, dec, radius_in_degree=5./3600.):
     return mask
 
 def get_radecbox_area(ramin,ramax,decmin,decmax):
-    '''
-    Returns area of ra, dec box.
+    """
+    Return area of ra, dec box.
 
     Parameters
     ----------
@@ -314,7 +304,7 @@ def get_radecbox_area(ramin,ramax,decmin,decmax):
     -------
     area : float, ndarray.
         Area (degree^2).
-    '''
+    """
     decfrac = np.diff(np.rad2deg(np.sin(np.deg2rad([decmin,decmax]))),axis=0)
     rafrac = np.diff([ramin,ramax],axis=0)
     area = decfrac*rafrac
@@ -323,9 +313,8 @@ def get_radecbox_area(ramin,ramax,decmin,decmax):
     return area
 
 def get_shape_e(ba):
-    '''
-    Returns ellipticity e given minor-to-major axis ratio ba.
-    See https://www.legacysurvey.org/dr8/catalogs/.
+    """
+    Return ellipticity ``e`` given minor-to-major axis ratio ``ba``.
 
     Parameters
     ----------
@@ -336,14 +325,16 @@ def get_shape_e(ba):
     -------
     e : float, ndarray
         Ellipticity.
-    '''
 
+    References
+    ----------
+    https://www.legacysurvey.org/dr8/catalogs/
+    """
     return (1.-ba)/(1.+ba)
 
 def get_shape_e1_e2(ba,phi):
-    '''
-    Returns ellipticities e1, e2 given minor-to-major axis ratio ba and angle phi.
-    See https://www.legacysurvey.org/dr8/catalogs/.
+    """
+    Return ellipticities e1, e2 given minor-to-major axis ratio ``ba`` and angle ``phi``.
 
     Parameters
     ----------
@@ -356,19 +347,21 @@ def get_shape_e1_e2(ba,phi):
     Returns
     -------
     e1 : float, ndarray
-        Ellipticity component e1.
+        Ellipticity component 1.
 
     e2 : float, ndarray
-        Ellipticity component e2.
-    '''
+        Ellipticity component 2.
 
+    References
+    ----------
+    https://www.legacysurvey.org/dr8/catalogs/
+    """
     e = get_shape_e(ba)
     return e*np.cos(2*phi), e*np.sin(2*phi)
 
 def get_shape_ba(e):
-    '''
-    Returns minor-to-major axis ratio ba given ellipticity e.
-    See https://www.legacysurvey.org/dr8/catalogs/.
+    """
+    Return minor-to-major axis ratio ``ba`` given ellipticity ``e``.
 
     Parameters
     ----------
@@ -379,21 +372,24 @@ def get_shape_ba(e):
     -------
     ba : float, ndarray
         Minor-to-major axis ratio (b/a).
-    '''
+
+    References
+    ----------
+    https://www.legacysurvey.org/dr8/catalogs/
+    """
     return (1.-np.abs(e))/(1.+np.abs(e))
 
 def get_shape_ba_phi(e1,e2):
-    '''
-    Returns minor-to-major axis ratio ba and angle phi given ellipticities e1, e2.
-    See https://www.legacysurvey.org/dr8/catalogs/.
+    """
+    Return minor-to-major axis ratio ``ba`` and angle ``phi`` given ellipticities ``e1``, ``e2``.
 
     Parameters
     ----------
     e1 : float, ndarray
-        Ellipticity component e1.
+        Ellipticity component 1.
 
     e2 : float, ndarray
-        Ellipticity component e2.
+        Ellipticity component 2.
 
     Returns
     -------
@@ -401,16 +397,21 @@ def get_shape_ba_phi(e1,e2):
         Minor-to-major axis ratio (b/a).
 
     phi : float, ndarray
-        Angle in radians.
-    '''
+        Angle (radian).
+
+    References
+    ----------
+    https://www.legacysurvey.org/dr8/catalogs/
+    """
     ba = get_shape_ba((e1**2+e2**2)**0.5)
     phi = 0.5*np.arctan2(e2,e1) % (2.*np.pi)
     return ba, phi
 
-def get_extinction(ra,dec,band=None,filter='DES'):
-    '''
-    Returns SFD extinction given ra, dec, band and filter.
-    If band not provided, returns EBV.
+def get_extinction(ra,dec,band=None,camera='DES'):
+    """
+    Return SFD extinction given ``ra``, ``dec``, ``band`` and ``camera``.
+
+    If ``band`` not provided, return EBV.
 
     Parameters
     ----------
@@ -423,31 +424,26 @@ def get_extinction(ra,dec,band=None,filter='DES'):
     band : string, default=None
         Photometric band. If not provided, returns EBV.
 
-    filter : string, default=`DES`
-        Filter.
+    camera : string, default=`DES`
+        Camera.
 
     Returns
     -------
     extinction : float, ndarray
         Extinction.
-
-    '''
+    """
     from tractor.sfd import SFDMap
     sfd = SFDMap()
     if band is None:
         c = 1
     else:
-        c = sfd.extinctions['%s %s' % (filter,band)]
+        c = sfd.extinctions['%s %s' % (camera,band)]
     return c*sfd.ebv(ra, dec)
 
 def mag2nano(mag):
-    '''
-    Magnitudes to nanomaggies conversion.
-    '''
+    """Magnitudes to nanomaggies conversion."""
     return 10. ** ((mag - 22.5) / -2.5)
 
 def nano2mag(nano):
-    '''
-    Nanomaggies to magnitudes conversion.
-    '''
+    """Nanomaggies to magnitudes conversion."""
     return -2.5 * (np.log10(nano) - 9)

@@ -1,16 +1,17 @@
 import argparse
 import logging
 import numpy as np
-from obiwan import *
-from settings import *
+from obiwan import SimCatalog,BrickCatalog,utils,setup_logging
+import settings
 
 logger = logging.getLogger('preprocessing')
 
-def isELG_colors(gflux=None,rflux=None,zflux=None,south=True,gmarg=0.5,grmarg=0.5,rzmarg=0.5,primary=None):
-    '''
-    Taken from https://github.com/desihub/desitarget/blob/master/py/desitarget/cuts.py
-    Enlarge selection box by gmarg, grmarg, rzmarg.
-    '''
+def isELG_colors(gflux=None,rflux=None,zflux=None,south=True,gmarg=0.,grmarg=0.,rzmarg=0.,primary=None):
+    """
+    Apply ELG selection with box enlarged by ``gmarg``, ``grmarg``, ``rzmarg``.
+
+    Base selection from https://github.com/desihub/desitarget/blob/master/py/desitarget/cuts.py.
+    """
     if primary is None:
         primary = np.ones_like(rflux, dtype='?')
     elg = primary.copy()
@@ -39,9 +40,9 @@ def isELG_colors(gflux=None,rflux=None,zflux=None,south=True,gmarg=0.5,grmarg=0.
     return elg
 
 def get_truth(truth_fn,south=True):
-
+    """Build truth table."""
     truth = SimCatalog(truth_fn)
-    mask = isELG_colors(south=south,**{'%sflux' % b:utils.mag2nano(truth.get(b)) for b in ['g','r','z']})
+    mask = isELG_colors(south=south,gmarg=0.5,grmarg=0.5,rzmarg=0.5,**{'%sflux' % b:utils.mag2nano(truth.get(b)) for b in ['g','r','z']})
     logger.info('Target selection: %d/%d objects' % (mask.sum(),mask.size))
     truth = truth[mask]
     truth.rename('objid','id_truth')
@@ -54,9 +55,7 @@ def get_truth(truth_fn,south=True):
     return truth
 
 def sample_from_truth(randoms,truth,rng=None,seed=None):
-    '''
-    Samples random photometry from truth table.
-    '''
+    """Sample random photometry from truth table."""
     if rng is None:
         rng = np.random.RandomState(seed=seed)
 
@@ -66,7 +65,7 @@ def sample_from_truth(randoms,truth,rng=None,seed=None):
         randoms.set(field,truth.get(field)[ind])
 
     for b in ['g','r','z']:
-        transmission = randoms.get_extinction(b,filter='DES')
+        transmission = randoms.get_extinction(b,camera='DES')
         flux = utils.mag2nano(randoms.get(b))*10**(-0.4*transmission)
         randoms.set('flux_%s' % b,flux)
 
@@ -79,9 +78,7 @@ def sample_from_truth(randoms,truth,rng=None,seed=None):
     return randoms
 
 def write_randoms(truth_fn,randoms_fn,bricknames=[],density=1e3,seed=None,gen_in_brick=True):
-    '''
-    Builds Obiwan randoms from scratch and truth table.
-    '''
+    """Build Obiwan randoms from scratch and truth table."""
     rng = np.random.RandomState(seed=seed)
     bricks = BrickCatalog()
     logger.info('Generating randoms in %s' % bricknames)
@@ -97,8 +94,8 @@ def write_randoms(truth_fn,randoms_fn,bricknames=[],density=1e3,seed=None,gen_in
             randoms += tmp
     else:
         bricks = bricks.get_by_name(bricknames)
-        radecbox = bricks.get_radecbox(all=True)
-        area = bricks.get_area(all=True)
+        radecbox = bricks.get_radecbox(total=True)
+        area = bricks.get_area(total=True)
         size = rng.poisson(density*area)
         randoms = SimCatalog()
         randoms.ra,randoms.dec = utils.sample_ra_dec(size,radecbox,rng=rng)
@@ -115,9 +112,7 @@ def write_randoms(truth_fn,randoms_fn,bricknames=[],density=1e3,seed=None,gen_in
     randoms.writeto(randoms_fn)
 
 def write_legacysurvey_randoms(input_fn,truth_fn,randoms_fn,bricknames=[],seed=None):
-    '''
-    Builds Obiwan randoms from legacysurvey randoms and truth table.
-    '''
+    """Build Obiwan randoms from legacysurvey randoms and truth table."""
     randoms = SimCatalog(input_fn)
     logger.info('Selecting randoms in %s' % bricknames)
     mask = np.in1d(randoms.brickname,bricknames)
@@ -144,9 +139,9 @@ if __name__ == '__main__':
     opt = parser.parse_args()
 
     if 'listbrick' in opt.do:
-        bricks = BrickCatalog(survey_dir)
-        bricks.write_list(bricklist_fn)
+        bricks = BrickCatalog(settings.survey_dir)
+        bricks.write_list(settings.bricklist_fn)
 
     if 'randoms' in opt.do:
-        #write_randoms(truth_fn,randoms_fn,bricknames=bricknames,seed=42,gen_in_brick=False)
-        write_legacysurvey_randoms(randoms_input_fn,truth_fn,randoms_fn,bricknames=bricknames,seed=42)
+        #write_randoms(settings.truth_fn,settings.randoms_fn,bricknames=settings.bricknames,seed=42,gen_in_brick=False)
+        write_legacysurvey_randoms(settings.randoms_input_fn,settings.truth_fn,settings.randoms_fn,bricknames=settings.bricknames,seed=42)

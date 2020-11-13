@@ -6,9 +6,10 @@ from .. import utils
 logger = logging.getLogger('Matching')
 
 def match(output_dir,brickname,base='input',radius_in_degree=1.5/3600.,**kwargs_file):
-    '''
-    Match and merge random input catalog to tractor output. Input columns `field` are
-    relabelled `sim_field`.
+    """
+    Match and merge random input catalog to **Tractor** output.
+
+    Input columns ``field`` are relabelled ``'sim_'+field``.
 
     Parameters
     ----------
@@ -20,47 +21,46 @@ def match(output_dir,brickname,base='input',radius_in_degree=1.5/3600.,**kwargs_
 
     base : string, default=`input`
         If `input`, returns input catalog with tractor measurements.
-        If `output`, returns tractor catalog with input values.
-        If 'inter', returns the intersection of input and tractor catalogs.
+        If `output`, returns **Tractor** catalog with input values.
+        If 'inter', returns the intersection of input and **Tractor** catalogs.
 
     radius_in_degree : float, default=1.5/3600.
         Radius to sphere-match both catalogs.
 
     kwargs_file : dict, default={}
-        Other arguments to file paths (fileid, rowstart, skipid).
+        Other Arguments for file paths (``fileid``, ``rowstart``, ``skipid``).
 
     Returns
     -------
     match : SimCatalog
         Matched catalog.
-    '''
-
+    """
     input_fn = utils.get_output_file(output_dir,'obiwan-randoms',brickname=brickname,**kwargs_file)
     tractor_fn = utils.get_output_file(output_dir,'tractor',brickname=brickname,**kwargs_file)
     logger.info('Reading input %s' % input_fn)
-    logger.info('Reading tractor %s' % tractor_fn)
+    logger.info('Reading Tractor %s' % tractor_fn)
 
-    input = SimCatalog(input_fn)
-    tractor = SimCatalog(tractor_fn)
+    cat_input = SimCatalog(input_fn)
+    cat_tractor = SimCatalog(tractor_fn)
 
-    index_input,index_tractor = input.match_radec(tractor,nearest=True,radius_in_degree=radius_in_degree)
+    index_input,index_tractor = cat_input.match_radec(cat_tractor,nearest=True,radius_in_degree=radius_in_degree)
 
-    for field in input.fields:
-        input.rename(field,'sim_%s' % field)
+    for field in cat_input.fields:
+        cat_input.rename(field,'sim_%s' % field)
 
     if base == 'input':
-        input.merge(tractor,index_self=index_input,index_other=index_tractor)
-        return input
+        cat_input.merge(cat_tractor,index_self=index_input,index_other=index_tractor)
+        return cat_input
     else:
-        tractor.merge(input,index_self=index_tractor,index_other=index_input)
+        cat_tractor.merge(cat_input,index_self=index_tractor,index_other=index_input)
     if base == 'output':
-        return tractor
-    return tractor[index_tractor]
+        return cat_tractor
+    return cat_tractor[index_tractor]
 
 @utils.saveplot()
 def scatter_match(ax,values1=None,values2=None,match=None,field=None,xlabel=None,ylabel=None,square=False,regression=False,diagonal=False,kwargs_scatter={},kwargs_regression={},kwargs_diagonal={}):
-    '''
-    Plot matching between random input catalog and tractor output.
+    """
+    Plot ``values2`` v.s. ``values1`` or ``match[field]`` v.s. ``match['sim_'+field]``.
 
     Parameters
     ----------
@@ -68,22 +68,22 @@ def scatter_match(ax,values1=None,values2=None,match=None,field=None,xlabel=None
         Where to plot.
 
     values1 : array-like, default=None
-        x-values.
+        x values.
 
     values2 : array-like, default=None
-        y-values.
+        y values.
 
     match : SimCatalog
-        If `values1` is None, `values1` and `values2` taken from `match`.
+        If ``values1`` is None, ``values1`` and ``values2`` taken from ``match``.
 
     field : string, default=None
-        Field of `match` to plot.
+        Field of ``match`` to plot.
 
     xlabel : string, default=None
-        xlabel, if None and `match` is provided, defaults to `sim_field`.
+        x label, if ``None`` and ``match`` is provided, defaults to ``'sim_'+field``.
 
     ylabel : string, default=None
-        ylabel, if None and `match` is provided, defaults to `field`.
+        y label, if ``None`` and ``match`` is provided, defaults to ``field``.
 
     square : bool, default=False
         Whether to enforce square plot.
@@ -95,15 +95,14 @@ def scatter_match(ax,values1=None,values2=None,match=None,field=None,xlabel=None
         Whether to plot diagonal line.
 
     kwargs_scatter : dict, default={}
-        Arguments to plt.scatter().
+        Arguments for ``plt.scatter()``.
 
     kwargs_regression : dict, default={}
-        Arguments to plt.plot() regression line.
+        Arguments for ``plt.plot()`` regression line.
 
     kwargs_diagonal : dict, default={}
-        Arguments to plt.plot() diagonal line.
-    '''
-
+        Arguments for ``plt.plot()`` diagonal line.
+    """
     kwargs_scatter = utils.dict_default(kwargs_scatter,{'s':10,'marker':'.','alpha':1,'edgecolors':'none'})
     kwargs_diagonal = utils.dict_default(kwargs_diagonal,{'linestyle':'--','linewidth':2,'color':'k'})
     kwargs_regression = utils.dict_default(kwargs_regression,{'linestyle':'--','linewidth':2,'color':'r','label':''})

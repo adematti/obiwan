@@ -1,3 +1,5 @@
+#!/bin/bash
+
 #BLOB_MASK_DIR=/global/cfs/cdirs/cosmo/work/legacysurvey/dr9/south
 
 #export LEGACY_SURVEY_DIR=/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/
@@ -19,5 +21,5 @@ export SKY_TEMPLATE_DIR=/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/calib/sky
 export OUTPUT_DIR=${CSCRATCH}/Obiwan/test/
 export RANDOMS_FN=${OUTPUT_DIR}/randoms/randoms.fits
 
-mkdir -p ${OUTPUT_DIR}
-mkdir -p ${RANDOMS_FN%/*}
+mkdir -p "${OUTPUT_DIR}"
+mkdir -p "${RANDOMS_FN%/*}"

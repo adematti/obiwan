@@ -1,28 +1,26 @@
-'''
-Convenient classes to handle catalogs and bricks.
-'''
+"""Convenient classes to handle catalogs and bricks."""
 
 import os
 import logging
 import numpy as np
 from astrometry.util import fits
-from legacypipe.survey import LegacySurveyData
+from legacypipe.survey import LegacySurveyData,wcs_for_brick
 from . import utils
 
 logger = logging.getLogger('obiwan.catalog')
 
 class BaseCatalog(fits.tabledata):
 
-    '''
-    Class that inherits astrometry.util.fits.tabledata, with convenient methods.
-    '''
+    """Extend ``astrometry.util.fits.tabledata``, with convenient methods."""
+
     def __init__(self,*args,**kwargs):
-        '''
-        Calls astrometry.util.fits.fits_table().
-        For an empty catalog, one provide size or length, to define len(self),
-        used in methods to build np arrays (e.g. self.zeros()).
-        Otherwise, len(self) is set when the first column is added to self.
-        '''
+        """
+        Call ``astrometry.util.fits.fits_table()``.
+
+        For an empty catalog, one provide size or length, to define ``len(self)``,
+        used in methods to build ``numpy`` arrays (e.g. ``self.zeros()``).
+        Otherwise, ``len(self)`` is set when the first column is added to ``self``.
+        """
         length = kwargs.pop('length',kwargs.pop('size',None))
         table = fits.fits_table(*args,**kwargs)
         self.__dict__.update(table.__dict__)
@@ -30,90 +28,69 @@ class BaseCatalog(fits.tabledata):
 
     @property
     def size(self):
-        '''
-        Catalog size = len(self).
-        '''
+        """Return ``size = len(self)``."""
         return len(self)
 
     @property
     def fields(self):
-        '''
-        Catalog fields = self.get_columns(internal=False).
-        '''
+        """Return ``fields = self.get_columns(internal=False)``."""
         return self.get_columns(internal=False)
 
     def __contains__(self,name):
-        '''
-        Whether self contains column name.
-        '''
+        """Return whether ``self`` contains column ``name``."""
         return (name in self.fields)
 
     def zeros(self,dtype=np.float64):
-        '''
-        Returns array of size len(self) filled with zeros.
-        '''
+        """Return array of size ``len(self)`` filled with zeros."""
         return np.zeros(len(self),dtype=dtype)
 
     def ones(self,dtype=np.float64):
-        '''
-        Returns array of size len(self) filled with zeros.
-        '''
+        """Return array of size ``len(self)`` filled with zeros."""
         return np.ones(len(self),dtype=dtype)
 
     def falses(self):
-        '''
-        Returns array of size len(self) filled with False.
-        '''
+        """Return array of size ``len(self)`` filled with ``False``."""
         return self.zeros(dtype=np.bool_)
 
     def trues(self):
-        '''
-        Returns array of size len(self) filled with True.
-        '''
+        """Return array of size ``len(self)`` filled with ``True``."""
         return self.ones(dtype=np.bool_)
 
     def nans(self):
-        '''
-        Returns array of size len(self) filled with NaN.
-        '''
+        """Return array of size ``len(self)`` filled with ``np.nan``."""
         return self.ones()*np.nan
 
     def delete_columns(self,*fields):
-        '''
-        Delete columns.
-        '''
+        """Delete columns."""
         for field in fields:
             self.delete_column(field)
 
     def keep_columns(self,*fields):
-        '''
-        Keep only columns in argument.
-        '''
+        """Keep only columns in argument."""
         for field in self.fields:
             if field not in fields:
                 self.delete_column(field)
 
     def merge(self,other,index_self=None,index_other=None,fill_nan=True):
-        '''
-        Merges `other` catalog to self.
+        """
+        Merge ``other`` catalog to ``self``.
 
         Parameters
         ----------
         other : BaseCatalog
-            Catalog to be merged to self.
+            Catalog to be merged to ``self``.
 
         index_self : ndarray, default=None
-            Indices (or bool mask) of self to fill with `other`.
-            If None, all indices of self are considered.
+            Indices (or bool mask) of ``self`` to fill with ``other``.
+            If ``None``, all indices of ``self`` are considered.
 
         index_other : ndarray, default=None
-            Indices (or bool mask) of `other` to fill self.
-            If None, all indices of other are considered.
+            Indices (or bool mask) of ``other`` to fill ``self``.
+            If ``None``, all indices of ``other`` are considered.
 
         fill_nan : bool, default=True
-            Fill empty float arrays with NaN.
-
-        '''
+            If ``True``, fill empty float arrays with ``np.nan``.
+        """
         if index_self is None:
             index_self = self.trues()
         if index_other is None:
@@ -131,18 +108,14 @@ class BaseCatalog(fits.tabledata):
             self.set(field,col_self)
 
     def copy(self):
-        '''
-        Returns a copy of self.
-        '''
+        """Return a copy of ``self``."""
         # ugly hack, because of tabledata.copy() definition...
         toret = object.__new__(self.__class__)
         toret.__dict__.update(super(BaseCatalog,self).copy().__dict__)
         return toret
 
     def __eq__(self,other):
-        '''
-        Tests whether self == other (same type, length colums).
-        '''
+        """Return whether ``self == other`` (same type, length and colums)."""
         if not isinstance(other,self.__class__):
             return False
         if not set(self.fields) == set(other.fields):
@@ -156,20 +129,23 @@ class BaseCatalog(fits.tabledata):
         return True
 
     def __radd__(self,other):
+        """Right add: ``self + other``."""
         if other == 0:
             return self.copy()
         return self.__add__(other)
 
     def __ladd__(self,other):
+        """Left add: ``other + self``."""
         if other == 0:
             return self.copy()
         return self.__add__(other)
 
     def __add__(self,other):
-        '''
-        Appends self and other catalogs (total length = len(self) + len(other))
-        and return a new instance.
-        '''
+        """
+        Append ``self`` and ``other`` catalogs and return a new instance ``toret``.
+
+        ``len(toret) == len(self) + len(other)``
+        """
         toret = self.copy()
         if other == 0:
             return toret
@@ -179,39 +155,34 @@ class BaseCatalog(fits.tabledata):
         return toret
 
     def writeto(self,fn,*args,**kwargs):
-        '''
-        Saves to fn.
-        '''
+        """Saves to fn."""
         logger.info('Wrote %s' % fn)
         utils.mkdir(os.path.dirname(fn))
         super(BaseCatalog,self).writeto(fn,*args,**kwargs)
 
 class SimCatalog(BaseCatalog):
 
-    '''
-    Class that inherits BaseCatalog, with convenient methods for Obiwan randoms.
-    '''
+    """Extend ``BaseCatalog`` with convenient methods for **Obiwan** randoms."""
 
     def fill_obiwan(self,survey=None):
-        '''
-        Mandatory columns for Obiwan are:
-            ra, dec : coordinates
-            flux_g, flux_r, flux_z : in nanomaggies (with galactic extinction)
-            sersic : Sersic index
-            shape_r : half light radius
-            shape_e1, shape_e2 : ellipticities, see https://www.legacysurvey.org/dr8/catalogs/
+        """
+        Fill ``self`` with columns required for **Obiwan** (if not already in ``self``):
+            ``id`` : defaults to ``np.arange(len(self))``
+            ``brickname``, (brick) ``bx``, ``by``: based on ``survey`` and ``self.ra``, ``self.dec``.
 
-        Fills self with the required columns (if not already in self):
-            id : defaults to np.arange(len(self))
-            brickname, (brick) x, y: based on survey and self.ra, self.dec.
+        Columns mandatory for **Obiwan** are:
+            ``ra``, ``dec`` : coordinates
+            ``flux_g``, ``flux_r``, ``flux_z`` : in nanomaggies (with effect of galactic extinction)
+            ``sersic`` : Sersic index
+            ``shape_r`` : half light radius
+            ``shape_e1``, ``shape_e2`` : ellipticities, see https://www.legacysurvey.org/dr8/catalogs/.
 
         Parameters
         ----------
         survey : LegacySurveyData, string, default=None
-            survey_dir or survey. Used to determine brick-related quantities (brickname, x, y).
-            If None, constructs BrickCatalog from desiutil.brick.Bricks.
-
-        '''
+            ``survey_dir`` or survey. Used to determine brick-related quantities (``brickname``, ``bx``, ``by``).
+            If ``None``, brick-related quantities are inferred from ``desiutil.brick.Bricks`` (see ``BrickCatalog``).
+        """
         bricks = None
         if 'brickname' not in self:
             bricks = BrickCatalog(survey)
@@ -228,8 +199,10 @@ class SimCatalog(BaseCatalog):
         #    self.added = self.falses()
 
     def mask_collisions(self,radius_in_degree=5./3600.):
-        '''
-        Returns mask of collided objects.
+        """
+        Return mask of collided objects.
+
+        Calls ``utils.mask_collisions()``.
 
         Parameters
         ----------
@@ -240,72 +213,72 @@ class SimCatalog(BaseCatalog):
         -------
         mask : bool ndarray
             Mask of collided objects.
-
-        '''
+        """
         return utils.mask_collisions(self.ra,self.dec,radius_in_degree=radius_in_degree)
 
     def match_radec(self,other,radius_in_degree=5./3600.,**kwargs):
-        '''
-        Match self and other SimCatalog ra, dec.
+        """
+        Match ``self`` and ``other`` SimCatalog ``ra``, ``dec``.
+
+        Calls ``utils.match_radec()``.
 
         Parameters
         ----------
         other : SimCatalog
-            Catalog to be matched against self.
+            Catalog to be matched against ``self``.
 
         radius_in_degree : float, default=5./3600.
             Collision radius (degree).
 
         kwargs : dict, default={}
-            Arguments to utils.match_radec
+            Arguments for ``utils.match_radec()``.
 
         Returns
         -------
-        ind_self : ndarray
-            Indices into self of matching points.
+        index_self : ndarray
+            Indices of matching points in ``self``.
 
-        ind_other : ndarray
-            Indices into other of matching points.
-        '''
-
+        index_other : ndarray
+            Indices of matching points in ``other``.
+        """
         return utils.match_radec(self.ra,self.dec,other.ra,other.dec,radius_in_degree,**kwargs)
 
 
-    def get_extinction(self,band,filter='DES'):
-        '''
-        Returns SFD extinction given band and filter.
+    def get_extinction(self,band,camera='DES'):
+        """
+        Returns SFD extinction given ``band`` and ``camera``.
+
+        Calls ``utils.get_extinction()``.
 
         Parameters
         ----------
         band : string
             Photometric band.
 
-        filter : string, default=`DES`
-            Filter.
+        camera : string, default=`DES`
+            camera.
 
         Returns
         -------
         extinction : ndarray
             Extinction (mag).
-        '''
-        return utils.get_extinction(self.ra,self.dec,band=band,filter=filter)
+        """
+        return utils.get_extinction(self.ra,self.dec,band=band,camera=camera)
 
 class BrickCatalog(BaseCatalog):
-    '''
-    Class that inherits BaseCatalog, with convenient methods for bricks.
-    '''
+
+    """Extend ``BaseCatalog`` with convenient methods for bricks."""
 
     def __init__(self,survey=None):
-        '''
-        Load bricks from LegacySurveyData or string.
+        """
+        Load bricks.
 
         Parameters
         ----------
         survey : LegacySurveyData, string, default=None
-            survey_dir or survey.
-            If None, constructs BrickCatalog from desiutil.brick.Bricks.
-
-        '''
+            ``survey_dir`` or ``survey``.
+            If ``None``, construct ``BrickCatalog`` from ``desiutil.brick.Bricks``.
+        """
         if survey is not None:
             if not isinstance(survey,LegacySurveyData):
                 survey = LegacySurveyData(survey_dir=survey)
@@ -323,19 +296,19 @@ class BrickCatalog(BaseCatalog):
         self.hash = self.brickrow * (self._colmax + 1) + self.brickcol
 
     def get_by_name(self,brickname):
-        '''
-        Returns bricks with name brickname.
+        """
+        Return bricks with name ``brickname``.
 
         Parameters
         ----------
         brickname : string, array-like
-            If string, returns a single-element BrickCatalog, else a BrickCatalog with defined len().
+            If string, return a single-element ``BrickCatalog``, else a ``BrickCatalog`` with defined ``len()``.
 
         Returns
         -------
         bricks : BrickCatalog
-            self cut to brickname.
-        '''
+            ``self`` cut to ``brickname``.
+        """
         if isinstance(brickname,str):
             index = np.flatnonzero(self.brickname == brickname)[0]
         else:
@@ -344,8 +317,8 @@ class BrickCatalog(BaseCatalog):
         return self[index]
 
     def get_by_radec(self,ra,dec):
-        '''
-        Returns bricks containing ra, dec.
+        """
+        Return bricks containing ``ra``, ``dec``.
 
         Parameters
         ----------
@@ -358,8 +331,8 @@ class BrickCatalog(BaseCatalog):
         Returns
         -------
         bricks : BrickCatalog
-            self cut to bricks containing ra, dec.
-        '''
+            ``self`` cut to bricks containing ``ra``, ``dec``.
+        """
         if not np.isscalar(ra):
             ra, dec = np.array(ra), np.array(dec)
         row = np.int32(np.floor(dec * self._rowmax / 180. + 360. + 0.5))
@@ -369,47 +342,49 @@ class BrickCatalog(BaseCatalog):
         ind = self.hash.searchsorted(row * (self._colmax + 1) + col)
         return self[ind]
 
-    def get_radecbox(self,all=False):
-        '''
-        Returns ramin, ramax, decmin, decmax of individual bricks.
+    def get_radecbox(self,total=False):
+        """
+        Return ra, dec box (ramin, ramax, decmin, decmax) of individual bricks.
 
         Parameters
         ----------
-        all : bool, default=False
-            If True, returns the ra, dec box enclosing all bricks.
+        total : bool, default=False
+            If ``True``, returns the ra, dec box enclosing all bricks.
 
         Returns
         -------
         (ramin, ramax, decmin, decmax) : tuple of float, ndarray
             ra, dec box.
-        '''
+        """
         toret = [self.get(key) for key in ['ra1','ra2','dec1','dec2']]
-        if all:
+        if total:
             toret = [np.min(toret[0]),np.max(toret[1]),np.min(toret[2]),np.max(toret[3])]
         return toret
 
-    def get_area(self,all=False):
-        '''
-        Returns area of individual bricks.
+    def get_area(self,total=False):
+        """
+        Return area of individual bricks.
+
+        Calls ``utils.get_radecbox_area``.
 
         Parameters
         ----------
-        all : bool, default=False
-            If True, returns total area.
+        total : bool, default=False
+            If ``True``, returns total area.
 
         Returns
         -------
         area : float, ndarray
             Area (degree^2).
-        '''
+        """
         area = utils.get_radecbox_area(self.ra1,self.ra2,self.dec1,self.dec2)
-        if all:
+        if total:
             area = np.sum(area)
         return area
 
     def get_xy_from_radec(self,ra,dec,brickname=None):
-        '''
-        Returns brick x, y given ra, dec.
+        """
+        Returns brick ``bx``, ``by`` given ``ra``, ``dec``.
 
         Parameters
         ----------
@@ -420,19 +395,19 @@ class BrickCatalog(BaseCatalog):
             Declination (degree).
 
         brickname : string, array-like, default=None
-            Brick name. If array-like, should be of the same length as ra, dec.
-            If None, will query the correct brickname given ra, dec.
+            Brick name. If array-like, should be of the same length as ``ra``, ``dec``.
+            If ``None``, will query the correct ``brickname`` given ``ra``, ``dec``.
 
         Returns
         -------
         bx : float, ndarray
-            Brick corrdinate x.
+            Brick x coordinate.
 
         by : float, ndarray
-            Brick corrdinate y.
-        '''
+            Brick y coordinate.
+        """
         if isinstance(brickname,str):
-            flag, bx, by = utils.wcs_for_brick(self.get_by_name(brickname)).radec2pixelxy(ra,dec)
+            bx, by = wcs_for_brick(self.get_by_name(brickname)).radec2pixelxy(ra,dec)[1:]
             return bx, by
         elif brickname is None:
             brickname = np.atleast_1d(self.get_by_radec(ra,dec).brickname)
@@ -442,20 +417,20 @@ class BrickCatalog(BaseCatalog):
         for brickname_ in np.unique(brickname):
             mask = brickname == brickname_
             x_,y_ = self.get_xy_from_radec(ra[mask],dec[mask],brickname_)
-            bx.append(x_),by.append(y_)
+            bx.append(x_);by.append(y_)
         if np.isscalar(ra):
             return bx[0],by[0]
         return np.concatenate(bx),np.concatenate(by)
 
     def write_list(self,fn):
-        '''
-        Writes brick names to fn.
+        """
+        Write brick names to ``fn``.
 
         Parameters
         ----------
         fn : string
             Path to brick list.
-        '''
+        """
         utils.mkdir(os.path.dirname(fn))
         with open(fn,'w') as file:
             for brickname in self.brickname:

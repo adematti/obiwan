@@ -1,8 +1,4 @@
-# Licensed under a 3-clause BSD style license - see LICENSE.rst
-# -*- coding: utf-8 -*-
-'''
-Gathers classes to overload legacypipe.
-'''
+"""Classes to extend legacypipe."""
 
 import os
 import sys
@@ -21,17 +17,16 @@ import galsim
 logger = logging.getLogger('obiwan.kenobi')
 
 class LegacySurveySim(LegacySurveyData):
-    '''
-    Same behavior as legacypipe.survey.LegacySurveyData,
-    but this class also stores all the relevant obiwan objects.
-    '''
+
+    """Extend ``legacypipe.survey.LegacySurveyData`` with Obiwan attributes."""
 
     def __init__(self, *args, simcat=None, sim_stamp='tractor', add_sim_noise=False,
                  image_eq_model=False, seed=0, kwargs_file={}, **kwargs):
-        '''
-        Creates a LegacySurveySim object. kwargs are to be passed on to LegacySurveyData,
-        other arguments are specific to LegacySurveySim.
-        Note that only `survey_dir` must be specified to obtain bricks through self.get_brick_by_name(brickname).
+        """
+        Instantiate a ``LegacySurveySim`` object.
+
+        kwargs are to be passed on to ``LegacySurveyData``, other arguments are specific to ``LegacySurveySim``.
+        Only ``survey_dir`` must be specified to obtain bricks through ``self.get_brick_by_name(brickname)``.
 
         Parameters
         ----------
@@ -39,24 +34,24 @@ class LegacySurveySim(LegacySurveyData):
             Simulated source catalog for a given brick (not CCD).
 
         sim_stamp : string, default='tractor'
-            Method to simulate objects, either 'tractor' (TractorSimStamp) or 'galsim' (GalSimStamp).
+            Method to simulate objects, either 'tractor' (``TractorSimStamp``) or 'galsim' (``GalSimStamp``).
 
         add_sim_noise : bool, default=False
             Add Poisson noise from the simulated source to the image.
 
         image_eq_model : bool, default=False
-            Wherever add a simulated source, replace both image and invvar of the image
+            Wherever add a simulated source, replace both image and inverse variance of the image
             with that of the simulated source only.
 
         seed : int, default=0
             For random number generators.
 
         kwargs_file : dict, default={}
-            Used to specify output paths, see LegacySurveySim.find_file().
+            Used to specify output paths, see ``self.find_file()``.
 
         kwargs : dict, default={}
-            Arguments for legacypipe.survey.LegacySurveyData.
-        '''
+            Arguments for ``legacypipe.survey.LegacySurveyData``.
+        """
         super(LegacySurveySim, self).__init__(*args,**kwargs)
         self.update_sim(simcat=simcat,sim_stamp=sim_stamp,add_sim_noise=add_sim_noise,
                         image_eq_model=image_eq_model,seed=seed,kwargs_file=kwargs_file)
@@ -82,8 +77,8 @@ class LegacySurveySim(LegacySurveyData):
 
 
     def find_file(self, filetype, brick=None, output=False, **kwargs):
-        '''
-        Returns the filename of a Legacy Survey file.
+        """
+        Return the file name of a Legacy Survey file.
 
         Parameters
         ----------
@@ -97,20 +92,20 @@ class LegacySurveySim(LegacySurveyData):
             `nexp` -- number-of-exposure maps.
 
         output : bool
-            Whether we are about to write this file; will use self.output_dir as
-            the base directory rather than self.survey_dir.
+            Whether we are about to write this file; will use ``self.output_dir`` as
+            the base directory rather than ``self.survey_dir``.
 
         brick : string, defaut=None
             Brick name.
 
         kwargs : dict, default={}
-            Arguments for LegacySurveyData.find_file().
+            Arguments for ``super(LegacySurveyData,self).find_file()``.
 
         Returns
         -------
         fn : string
             Path to the specified file (whether or not it exists).
-        '''
+        """
         if filetype == 'obiwan-randoms':
             fn = super(LegacySurveySim,self).find_file('tractor',brick=brick,output=output,**kwargs)
             assert 'tractor' in fn # make sure not to overwrite tractor files
@@ -143,29 +138,47 @@ class LegacySurveySim(LegacySurveyData):
 
 
 class CosmosSim(LegacySurveySim,CosmosSurvey):
-    '''
-    Filters the CCDs to just those in the cosmos survey.
-    Call with LegacySurveySim arguments plus additional CosmosSurvey argument 'subset'.
-    '''
+
+    """
+    Extend ``LegacySurveySim`` with a filter for cosmos CCDs.
+
+    Call with LegacySurveySim arguments plus additional CosmosSurvey argument ``subset``.
+    """
 
     def filter_ccd_kd_files(self, fns):
         return [fn for fn in fns if 'decam+noise' in fn]
     def filter_ccds_files(self, fns):
         return [fn for fn in fns if 'decam+noise' in fn]
+    def filter_annotated_ccds_files(self, fns):
+        return [fn for fn in fns if 'decam+noise' in fn]
     def get_default_release(self):
         return 9007
 
 class DecamSim(LegacySurveySim,DecamSurvey):
-    '''
-    Filters the CCDs to just those in the decam survey.
-    '''
-    pass
+
+    """Extend ``LegacySurveySim`` with a filter for DECam CCDs."""
+
+    def filter_ccd_kd_files(self, fns):
+        return [fn for fn in fns if 'decam' in fn]
+    def filter_ccds_files(self, fns):
+        return [fn for fn in fns if 'decam' in fn]
+    def filter_annotated_ccds_files(self, fns):
+        return [fn for fn in fns if 'decam' in fn]
+    def get_default_release(self):
+        return 9008
 
 class NinetyPrimeMosaicSim(LegacySurveySim,NinetyPrimeMosaic):
-    '''
-    Filters the CCDs to just those in the mosaic or 90prime surveys.
-    '''
-    pass
+
+    """Extend ``LegacySurveySim`` with a filter for mosaic or 90prime CCDs."""
+
+    def filter_ccd_kd_files(self, fns):
+        return [fn for fn in fns if ('90prime' in fn) or ('mosaic' in fn)]
+    def filter_ccds_files(self, fns):
+        return [fn for fn in fns if ('90prime' in fn) or ('mosaic' in fn)]
+    def filter_annotated_ccds_files(self, fns):
+        return [fn for fn in fns if ('90prime' in fn) or ('mosaic' in fn)]
+    def get_default_release(self):
+        return 9009
 
 runs = {
     'decam': DecamSim,
@@ -177,6 +190,11 @@ runs = {
 }
 
 def get_survey(name, **kwargs):
+    """
+    Return an instance of the ``LegacySurveySim``-inherited class given by name.
+
+    See ``obiwan.kenobi.runs`` dictionary.
+    """
     survey_class = runs[name]
     if name != 'cosmos':
         kwargs.pop('subset',None)
@@ -184,11 +202,11 @@ def get_survey(name, **kwargs):
     return survey
 
 class GSImage(galsim.Image):
-    '''
-    A wrapper around galsim.Image, to bypass array privacy.
-    '''
+
+    """Extend ``galsim.Image``, to bypass array privacy."""
 
     def __setitem__(self,*args):
+        """Extend ``galsim.Image.__setitem__`` to allow numpy-style ``self[mask] = ...``"""
         if (len(args) == 2) and isinstance(args[0],np.ndarray):
             self._array[args[0]] = args[1]
         else:
@@ -196,19 +214,21 @@ class GSImage(galsim.Image):
 
     @property
     def array(self):
+        """Return private attribute ``self._array``."""
         return self._array
 
     @array.setter
     def array(self,array):
+        """Set private attribute ``self._array``."""
         self._array = array
 
 def _Image(array, bounds, wcs):
-    '''
-    This function of galsim.image must be redefined to have all methods of galsim.Image consistent
-    within GSImage (e.g. copy()).
+    """
+    Function of ``galsim.image`` redefined to have all methods of galsim.Image consistent within ``GSImage`` (e.g. ``self.copy()``).
+
     Equivalent to ``GSImage(array, bounds, wcs)``, but without the overhead of sanity checks,
     and the other options for how to provide the arguments.
-    '''
+    """
     ret = GSImage.__new__(GSImage)
     ret.wcs = wcs
     ret._dtype = array.dtype.type
@@ -222,31 +242,31 @@ def _Image(array, bounds, wcs):
 galsim.image._Image = _Image
 
 def sum_invar(stamp_invar,tim_invar):
-    '''
-    Returns tim_invar when stamp_invar == 0, the harmonic sum of stamp_invar and tim_invar otherwise.
+    """
+    Return the harmonic sum of ``stamp_invar`` and ``tim_invar``.
+
+    Return ``tim_invar`` where ``stamp_invar == 0``.
 
     Parameters
     ----------
     stamp_invar : GSImage
+        Inverse variance.
 
     tim_invar : GSImage
+        Inverse variance.
 
     Returns
     -------
     obj_invar : GSImage
-
-    '''
-    # return
+        Inverse variance.
+    """
     obj_invar = tim_invar.copy()
     obj_invar[stamp_invar.array>0] = (stamp_invar.array[stamp_invar.array>0]**(-1) + tim_invar.array[stamp_invar.array>0]**(-1))**(-1)
     return obj_invar
 
 
 class BaseSimImage(object):
-
-    '''
-    Dumb class that overloads get_tractor_image for future multiple inheritance.
-    '''
+    """Dumb class that extends ``self.get_tractor_image()`` for future multiple inheritance."""
 
     def get_tractor_image(self, **kwargs):
 
@@ -259,7 +279,6 @@ class BaseSimImage(object):
 
         #shot the image to 0
         #tim.data = np.zeros(tim.data.shape)
-        t1 = Time()
         if self.survey.sim_stamp == 'tractor':
             objstamp = TractorSimStamp(self,tim)
         else:
@@ -277,10 +296,10 @@ class BaseSimImage(object):
 
         if self.survey.simcat is None:
             return tim
+
         # Store simulated galaxy images in tim object
         # Loop on each object.
-        #f = open(self.stamp_stat_fn,'a')
-        for ii, obj in enumerate(self.survey.simcat):
+        for obj in self.survey.simcat:
             # Print timing
             t0 = Time()
             logger.info('Drawing object id=%d: sersic=%.2f, shape_r=%.2f, shape_e1=%.2f, shape_e2=%.2f' %
@@ -288,7 +307,7 @@ class BaseSimImage(object):
             stamp = objstamp.draw(obj)
             t0 = logger.info('%s finished drawing object id=%d: band=%s dbflux=%f addedflux=%f in %s' %
                 (objstamp.__class__.__name__,obj.id,objstamp.band,obj.get('flux_%s' % objstamp.band),stamp.array.sum(),Time()-t0))
-            stamp_nonoise = stamp.copy()
+            #stamp_nonoise = stamp.copy()
             if self.survey.add_sim_noise:
                 stamp += objstamp.get_noise_gaussian(stamp)
             stamp_invar = objstamp.get_invar_poisson(stamp)
@@ -299,7 +318,7 @@ class BaseSimImage(object):
                 #self.survey.simcat.added[ii] = True
                 stamp = stamp[overlap]
                 stamp_invar = stamp_invar[overlap]
-                stamp_nonoise = stamp_nonoise[overlap]
+                #stamp_nonoise = stamp_nonoise[overlap]
                 # Zero out invar where bad pixel mask is flagged (> 0)
                 stamp_invar[tim_dq[overlap].array > 0] = 0.
                 # Add stamp to image
@@ -335,42 +354,51 @@ class BaseSimImage(object):
 
 class DecamSimImage(BaseSimImage,DecamImage):
 
+    """Extend ``BaseSimImage`` with ``DecamImage``."""
+
     pass
 
 class BokSimImage(BaseSimImage,BokImage):
+
+    """Extend ``BaseSimImage`` with ``BokImage``."""
 
     pass
 
 class MosaicSimImage(BaseSimImage,MosaicImage):
 
+    """Extend ``BaseSimImage`` with ``MosaicImage``."""
+
     pass
 
 class DecamSimImagePlusNoise(BaseSimImage,DecamImagePlusNoise):
+
+    """Extend ``BaseSimImage`` with ``DecamImagePlusNoise``."""
 
     pass
 
 class BaseSimStamp(object):
 
     """
-    Base class to draw model galaxies for a single image.
+    Draw model galaxies for a single image.
 
+    Parent class to be inherited from to build different galaxy models.
     """
 
     def __init__(self,image,tim,**attrs):
+        """
+        Instantiate ``BaseSimStamp``.
 
-        '''
         Parameters
         ----------
         image : LegacySurveyImage
-            Current LegacySurveyImage.
+            Current ``LegacySurveyImage``.
 
         tim : tractor.Image
             Current tractor.Image.
 
         attrs : dict, default={}
-            Other attributes useful to define patches (e.g. nx, ny).
-
-        '''
+            Other attributes useful to define patches (e.g. ``nx``, ``ny``).
+        """
         self.band = tim.band.strip()
         self.zpscale = tim.zpscale
         self.attrs = attrs
@@ -385,8 +413,8 @@ class BaseSimStamp(object):
         self.rng = image.survey.rng
 
     def set_local(self,ra,dec):
-        '''
-        Sets local x,y coordinates.
+        """
+        Set local ``self.xcen``, ``self.ycen`` coordinates.
 
         Parameters
         ----------
@@ -395,26 +423,26 @@ class BaseSimStamp(object):
 
         dec : float
             Declination (degree).
-        '''
+        """
         # x,y coordinates start at +1
-        flag, self.xcen, self.ycen = self.tim.subwcs.radec2pixelxy(ra,dec)
+        self.xcen, self.ycen = self.tim.subwcs.radec2pixelxy(ra,dec)[1:]
 
-    def get_noise_gaussian(self,gal):
-        '''
-        Generates a GSImage random Gaussian noise corresponding to gal.
+    def get_noise_gaussian(self,gim):
+        """
+        Return a ``GSImage`` with random Gaussian noise corresponding to ``gim``.
 
         Parameters
         ----------
-        gal : GSImage
+        gim : GSImage
             Input image.
 
         Returns
         -------
         noise : GSImage
             Noise.
-        '''
+        """
         # Noise model + no negative image vals when compute noise
-        noise = gal.copy()
+        noise = gim.copy()
         one_std_per_pix = noise.array
         one_std_per_pix[one_std_per_pix < 0] = 0
         one_std_per_pix = np.sqrt(one_std_per_pix * self.nano2e) # e-
@@ -422,48 +450,45 @@ class BaseSimStamp(object):
         noise.array = one_std_per_pix * num_stds / self.nano2e #nanomaggies
         return noise
 
-    def get_invar_poisson(self,gal):
-        '''
-        Returns a GSImage Poisson noise corresponding to gal.
+    def get_invar_poisson(self,gim):
+        """
+        Return a ``GSImage`` with Poisson inverse variance corresponding to gim.
 
         Parameters
         ----------
-        gal : GSImage
+        gim : GSImage
             Input image.
 
         Returns
         -------
         invar : GSImage
             Inverse variance.
-        '''
-        invar = gal.copy() #nanomaggies
+        """
+        invar = gim.copy() #nanomaggies
         #invar.array[:] = 0
-        #invar.array[gal.array!=0] = self.nano2e**2/np.abs(gal.array[gal.array!=0]*self.nano2e)
-        invar.array = self.nano2e**2/np.abs(gal.array*self.nano2e)
+        #invar.array[gim.array!=0] = self.nano2e**2/np.abs(gim.array[gim.array!=0]*self.nano2e)
+        invar.array = self.nano2e**2/np.abs(gim.array*self.nano2e)
         return invar
 
 
 class TractorSimStamp(BaseSimStamp):
 
-    """
-    Class to draw stamps with Tractor objects for a single image.
-
-    """
+    """Extend ``BaseSimStamp`` with generation of **Tractor** objects."""
 
     def get_subimage(self):
-        '''
-        Returns a subimage around xcen,ycen.
+        """
+        Return a subimage around ``self.xcen``, ``self.ycen``.
 
         Parameters
         ----------
         obj : SimCatalog row
-            An object with attributes ra, dec.
+            An object with attributes ``ra``, ``dec``.
 
         Returns
         -------
         tim : tractor.Image
             Subimage.
-        '''
+        """
         nx = self.attrs.get('nx',64)
         ny = self.attrs.get('ny',64)
         xlow,ylow = nx//2+1,ny//2+1
@@ -480,21 +505,23 @@ class TractorSimStamp(BaseSimStamp):
         return self.tim.subimage(self.sx0,self.sx1,self.sy0,self.sy1)
 
     def draw(self,obj):
-        '''
-        Returns a GSImage with obj in the center.
-        If either obj.sersic or obj.shape_r is 0, a point source is drawn.
+        """
+        Return a ``GSImage`` with ``obj`` in the center.
+
+        If either ``obj.sersic`` or ``obj.shape_r`` is 0, a point source is drawn.
         Else a Sersic profile is used.
 
         Parameters
         ----------
         obj : SimCatalog row
-            An object with attributes ra, dec, sersic, shape_r, shape_e1, shape_e2, flux_+self.band.
+            An object with attributes ``ra``, ``dec``, ``sersic``, ``shape_r``,
+            ``shape_e1``, ``shape_e2``, ``'flux_'+self.band``.
 
         Returns
         -------
         gim : GSImage
-            Image with obj.
-        '''
+            Image with ``obj``.
+        """
         ra,dec,flux = obj.ra,obj.dec,obj.get('flux_%s' % self.band)
         sersic,shape_r,shape_e1,shape_e2 = obj.sersic,obj.shape_r,obj.shape_e1,obj.shape_e2
         pos = tractor.RaDecPos(ra,dec)
@@ -518,13 +545,12 @@ class TractorSimStamp(BaseSimStamp):
 
 class GalSimStamp(BaseSimStamp):
 
-    """
-    Class to draw stamps with GalSim objects for a single image.
+    """Extend ``BaseSimStamp`` with generation of GalSim objects."""
 
-    """
     def set_local(self,ra,dec):
-        '''
-        Sets local x,y coordinates, psf and scale.
+        """
+        Extend ``super(GalSimStamp,self).set_local()`` by setting pixel ``self.scale``,
+        ``self.psf`` and object integer and fractional positions ``self.offsetint`` and ``self.offsetfrac``.
 
         Parameters
         ----------
@@ -533,7 +559,7 @@ class GalSimStamp(BaseSimStamp):
 
         dec : float
             Declination (degree).
-        '''
+        """
         # x,y coordinates start at +1
         super(GalSimStamp,self).set_local(ra,dec)
         #self.scale = self.tim.subwcs.pixscale_at(self.xcen,self.ycen)
@@ -546,21 +572,23 @@ class GalSimStamp(BaseSimStamp):
         self.offsetfrac = galsim.PositionD(frac(self.xcen),frac(self.ycen))
 
     def draw(self,obj):
-        '''
-        Returns a GSImage with obj in the center.
-        If either obj.sersic or obj.shape_r is 0, a point source is drawn.
+        """
+        Return a ``GSImage`` with ``obj`` in the center.
+
+        If either ``obj.sersic`` or ``obj.shape_r`` is 0, a point source is drawn.
         Else a Sersic profile is used.
 
         Parameters
         ----------
         obj : SimCatalog row
-            An object with attributes ra, dec, sersic, shape_r, shape_e1, shape_e2, flux_+self.band.
+            An object with attributes ``ra``, ``dec``, ``sersic``, ``shape_r``,
+            ``shape_e1``, ``shape_e2``, ``'flux_'+self.band``.
 
         Returns
         -------
         gim : GSImage
-            Image with obj.
-        '''
+            Image with ``obj``.
+        """
         ra,dec,flux = obj.ra,obj.dec,obj.get('flux_%s' % self.band)
         sersic,shape_r,shape_e1,shape_e2 = obj.sersic,obj.shape_r,obj.shape_e1,obj.shape_e2
         gsparams = galsim.GSParams(maximum_fft_size=256**2)

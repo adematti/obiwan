@@ -17,42 +17,38 @@ install:
     # ubuntu's source extractor package renames the executable.
     - ln -s /usr/bin/sextractor ~/bin/sex
     - export PATH=${PATH}:~/bin
-    - pip install Sphinx
+    - pip install sphinx
     - pip install numpy
     - pip install scipy
     # matplotlib problem saving jpg (in python3.5 only):
     # https://github.com/ipython/ipython/issues/8052
-    - pip install "Pillow<7"
+    - pip install "pillow<7"
     - pip install matplotlib
-    - pip install numpydoc
     - pip install astropy
     - pip install photutils
     - pip install coveralls
     - pip install fitsio==1.1.2
     - pip install cython
+    - (cd $HOME && wget -nv http://www.fftw.org/fftw-3.3.8.tar.gz && tar xvzf fftw-3.3.8.tar.gz && cd fftw-3.3.8 && ./configure --enable-shared && make -j4 && sudo make install)
     - pip install galsim
-    - git clone https://github.com/dstndstn/tractor.git
-    - (cd tractor && python setup-cython.py install --with-ceres)
-
-before_script:
+    - (cd $HOME && git clone https://github.com/dstndstn/tractor.git && cd tractor && python setup-cython.py install --with-ceres)
     - if [ ! -d "$HOME/astrometry.net" ]; then (cd $HOME; git clone https://github.com/dstndstn/astrometry.net.git); fi
     - (cd $HOME/astrometry.net && git pull) || (rm -Rf $HOME/astrometry.net && cd $HOME && git clone https://github.com/dstndstn/astrometry.net.git);
     - (cd $HOME/astrometry.net && make && make py)
     - (cd $HOME && git clone https://github.com/legacysurvey/unwise_psf.git && cd unwise_psf && git checkout dr9.3)
+    - (cd $HOME && git clone https://github.com/legacysurvey/legacypipe.git legacypipe)
+    - (cd $HOME && git clone https://github.com/desihub/desiutil.git desiutil && cd desiutil && python setup.py install)
+    - export PYTHONPATH=$(pwd)/py:$HOME/legacypipe/py:$HOME/astrometry.net:$HOME/unwise_psf/py:${PYTHONPATH}
+    - export PATH=${PATH}:$HOME/astrometry.net/solver:$HOME/astrometry.net/util
+
+before_script:
     - mkdir -p $HOME/dust/maps
-    - (cd $HOME/dust/maps && wget -c http://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_ngp.fits)
-    - (cd $HOME/dust/maps && wget -c http://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_sgp.fits)
+    - (cd $HOME/dust/maps && wget -c https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_ngp.fits)
+    - (cd $HOME/dust/maps && wget -c https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_sgp.fits)
     - export DUST_DIR=$HOME/dust
-    - (cd $HOME; git clone http://github.com/legacysurvey/legacypipe.git legacypipe)
-    - (cd $HOME; git clone https://github.com/desihub/desiutil.git desiutil && cd desiutil && python3 setup.py install)
 
 script:
-    - export PYTHONPATH=${PYTHONPATH}:$(pwd)/py:$HOME/legacypipe/py:$HOME/astrometry.net:$HOME/unwise_psf/py
-    - export PATH=${PATH}:$HOME/astrometry.net/solver:$HOME/astrometry.net/util
-    - ls $HOME
-    - ls $HOME/astrometry.net
-    - (cd doc && make)
-    - (cd py && coverage run tests/test_runbrick.py psfex ceres && coverage run -m pytest tests/ && coverage combine)
+    - (cd py && coverage run tests/test_runbrick.py && coverage run -m pytest tests/ && coverage combine)
 
 after_success:
     - (cd py && coveralls)

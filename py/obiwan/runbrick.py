@@ -1,6 +1,5 @@
-'''
-Obiwan main executable, equivalent of legacypipe.runbrick.
-'''
+"""**Obiwan** main executable, equivalent of ``legacypipe.runbrick``."""
+
 import os
 import sys
 import logging
@@ -12,8 +11,8 @@ from obiwan.utils import setup_logging
 logger = logging.getLogger('obiwan.runbrick')
 
 def get_parser():
-    '''
-    Appends Obiwan arguments to those of legacypipe.runbrick.
+    """
+    Append **Obiwan** arguments to those of ``legacypipe.runbrick``.
 
     Returns
     -------
@@ -21,18 +20,13 @@ def get_parser():
         Parser.
 
     args_runbrick : list
-        List of legacypipe-specific arguments.
-    '''
+        List of **legacypipe**-specific arguments.
+    """
     import argparse
-    de = ('Main "Obiwan" script for the Legacy Survey ' +
-          '(DECaLS, MzLS, Bok) data reductions.')
-
-    ep = '''
-e.g., to run a small field containing a cluster:
-
-python -u obiwan/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 950 -P pickles/runbrick-cluster-%%s.pickle
-
-    '''
+    de = ('Main "Obiwan" script for the Legacy Survey (DECaLS, MzLS, Bok) data reductions.')
+    ep = """
+    e.g., to run a small field containing a cluster:
+python -u obiwan/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 950 -P pickles/runbrick-cluster-%%s.pickle"""
     parser = argparse.ArgumentParser(description=de,epilog=ep,add_help=False,parents=[runbrick.get_parser()])
     args_runbrick = utils.get_parser_args(parser,exclude=['verbose','help'])
     #Obiwan arguments
@@ -58,30 +52,30 @@ python -u obiwan/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 950 -
     return parser,args_runbrick
 
 def get_runbrick_kwargs(args_runbrick,**opt):
-    '''
-    Converts obiwan.runbrick.py cmd line options into `survey` and `**kwargs` for run_brick().
-    Wraps legacypipe.runbrick.get_runbrick_kwargs.
+    """
+    Convert ``obiwan.runbrick`` command line options into ``survey`` and ``**kwargs`` for ``run_brick()``.
+
+    Wraps ``legacypipe.runbrick.get_runbrick_kwargs()``.
 
     Parameters
     ----------
     args_runbrick : list
-        List of legacypipe-specific arguments.
+        List of **legacypipe**-specific arguments.
 
     opt : dict
-        Dictionary of the cmd line options to obiwan.runbrick.
+        Dictionary of the command line options to ``obiwan.runbrick``.
 
     Returns
     -------
     survey : LegacySurveySim instance
-        Survey, without simcat.
+        Survey, without ``simcat``.
 
     kwargs : dict, default={}
-        Arguments for legacypipe.runbrick.run_brick following::
+        Arguments for ``legacypipe.runbrick.run_brick()`` following::
 
             run_brick(brickname, survey, **kwargs)
 
-    '''
-
+    """
     opt['kwargs_file'] = {key:opt[key] for key in ['fileid','rowstart','skipid']}
 
     kwargs_survey = {key:opt[key] for key in \
@@ -96,25 +90,25 @@ def get_runbrick_kwargs(args_runbrick,**opt):
     return survey,kwargs
 
 def run_brick(opt, survey, **kwargs):
-    '''
-    Adds simcat to survey, run brick, and saves simcat.
-    Wraps legacypipe.runbrick.run_brick.
+    """
+    Add ``simcat`` to ``survey``, run brick, and saves ``simcat``.
+
+    Wraps ``legacypipe.runbrick.run_brick()``.
 
     Parameters
     ----------
     opt : Namespace
-        Cmd line options to obiwan.runbrick.
+        Command line options for ``obiwan.runbrick``.
 
     survey : LegacySurveySim instance
-        Survey, without simcat.
+        Survey, without ``simcat``.
 
     kwargs : dict, default={}
-        Arguments for legacypipe.runbrick.run_brick following::
+        Arguments for ``legacypipe.runbrick.run_brick()`` following::
 
             run_brick(brickname, survey, **kwargs)
 
-    '''
-
+    """
     # legacypipe-only run if opt.skipid==0 and random filename not provided
     if (not (opt.skipid>0)) and (opt.ran_fn is None):
         survey.simcat = None
@@ -143,7 +137,7 @@ def run_brick(opt, survey, **kwargs):
     mask_simcat = ~simcat.collided
 
     if ncollided>0:
-        logger.info('Found %d collisions! You will have to run runbrick.py with --skipid = .' % (ncollided,opt.skipid+1))
+        logger.info('Found %d collisions! You will have to run runbrick.py with --skipid = %d.' % (ncollided,opt.skipid+1))
 
     survey.simcat = simcat[mask_simcat]
 
@@ -165,7 +159,8 @@ def run_brick(opt, survey, **kwargs):
 def main(args=None):
     """
     Main routine which parses the optional inputs.
-    Simple copy-pase from legacypipe.runbrick.main, simply changing::
+
+    Simple copy-paste from ``legacypipe.runbrick.main()``, simply changing::
 
         parser = get_parser()
         logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
@@ -186,7 +181,6 @@ def main(args=None):
     args : list, default=None
         To overload command line arguments.
     """
-
     import datetime
     from legacypipe.survey import get_git_version
 
@@ -298,6 +292,7 @@ def main(args=None):
 
 
 if __name__ == '__main__':
+
     from astrometry.util.ttime import Time,CpuMeas,MemMeas
     Time.add_measurement(CpuMeas)
     Time.add_measurement(MemMeas)

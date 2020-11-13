@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 
 # Script for running the obiwan code within a Shifter container at NERSC
 
@@ -24,7 +24,7 @@ let usemem=${maxmem}*${ncores}/32
 # Can detect Cori KNL node (96 GB) via:
 # grep -q "Xeon Phi" /proc/cpuinfo && echo Yes
 
-ulimit -Sv $usemem
+ulimit -Sv "$usemem"
 
 cd /src/obiwan/py
 
@@ -78,42 +78,42 @@ case $key in
 esac
 done
 
-mkdir -p ${output_dir}
-mkdir -p ${ran_fn%/*}
+mkdir -p "${output_dir}"
+mkdir -p "${ran_fn%/*}"
 
 rsname="file${fileid}_rs${rowstart}_skip${skipid}"
-bri=$(echo $brick | head -c 3)
+bri=$(echo "$brick" | head -c 3)
 log="${outdir}/logs/${bri}/${rsname}/${brick}.log"
-mkdir -p ${log%/*}
+mkdir -p "${log%/*}"
 psfn="${outdir}/metrics/${bri}/${rsname}/ps-${brick}-${SLURM_JOB_ID}.fits"
-mkdir -p ${psfn%/*}
+mkdir -p "${psfn%/*}"
 
-log=''
-echo Logging to: $log
-echo Running on $(hostname)
+#log=''
+echo "Logging to: $log"
+echo "Running on $(hostname)"
 
-echo -e "\n\n\n" >> $log
-echo "-----------------------------------------------------------------------------------------" >> $log
-echo "PWD: $(pwd)" >> $log
-echo >> $log
-echo "Environment:" >> $log
-set | grep -v PASS >> $log
-echo >> $log
-ulimit -a >> $log
-echo >> $log
+echo -e "\n\n\n" >> "$log"
+echo "-----------------------------------------------------------------------------------------" >> "$log"
+echo "PWD: $(pwd)" >> "$log"
+echo >> "$log"
+echo "Environment:" >> "$log"
+set | grep -v PASS >> "$log"
+echo >> "$log"
+ulimit -a >> "$log"
+echo >> "$log"
 
-echo -e "\nStarting on $(hostname)\n" >> $log
-echo "-----------------------------------------------------------------------------------------" >> $log
+echo -e "\nStarting on $(hostname)\n" >> "$log"
+echo "-----------------------------------------------------------------------------------------" >> "$log"
 
 python -O obiwan/runbrick.py \
-      --brick $brick \
-      --threads ${ncores} \
-      --outdir ${outdir} \
-      --ran-fn ${ran_fn} \
-      --fileid ${fileid} \
-      --rowstart ${rowstart} \
-      --skipid ${skipid} \
-      --ps ${psfn} \
-      --ps-t0 $(date "+%s") \
-      $others
-      >> $log 2>&1
+      --brick "$brick" \
+      --threads "${ncores}" \
+      --outdir "${outdir}" \
+      --ran-fn "${ran_fn}" \
+      --fileid "${fileid}" \
+      --rowstart "${rowstart}" \
+      --skipid "${skipid}" \
+      --ps "${psfn}" \
+      --ps-t0 "$(date "+%s")" \
+      "$others"
+      >> "$log" 2>&1

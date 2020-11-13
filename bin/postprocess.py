@@ -1,8 +1,8 @@
 import argparse
 import logging
 import numpy as np
-from obiwan import *
-from settings import *
+from obiwan import scripts,SimCatalog,utils,setup_logging
+import settings
 
 logger = logging.getLogger('postprocessing')
 
@@ -16,15 +16,15 @@ if __name__ == '__main__':
 
     if 'match' in opt.do:
         match = 0
-        for brickname in bricknames:
-            match += scripts.match(output_dir,brickname,base='inter',radius_in_degree=0.2/3600,rowstart=0,fileid=0,skipid=0)
+        for brickname in settings.bricknames:
+            match += scripts.match(settings.output_dir,brickname,base='inter',radius_in_degree=0.2/3600,rowstart=0,fileid=0,skipid=0)
         print(np.abs(match.sim_dec-match.dec).max()*3600.)
         logger.info('Matched catalog of size %d' % match.size)
-        match.writeto(randoms_matched_fn)
+        match.writeto(settings.randoms_matched_fn)
 
     if 'plot' in opt.do:
         from matplotlib import pyplot as plt
-        match = SimCatalog(randoms_matched_fn)
+        match = SimCatalog(settings.randoms_matched_fn)
         fields = ['ra','dec','flux_g','flux_r','flux_z','sersic','shape_r','shape_e1','shape_e2']
         print(match.sim_id)
         for field in fields:
@@ -35,5 +35,5 @@ if __name__ == '__main__':
         fig.subplots_adjust(hspace=0.4,wspace=0.4)
         lax = lax.flatten()
         for ax,field in zip(lax,fields):
-            scatter_match(ax,match=match,diagonal=True)
-        utils.savefig(path=dir_plot+'match.png')
+            scripts.scatter_match(ax,match=match,diagonal=True)
+        utils.savefig(fn=settings.dir_plot+'match.png')

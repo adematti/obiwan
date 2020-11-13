@@ -1,3 +1,4 @@
+import os
 import tempfile
 import logging
 import numpy as np
@@ -21,8 +22,8 @@ def test_base():
     mask[:50] = True
     cat2 = cat2[mask]
     assert len(cat2) == 50
-    with tempfile.TemporaryDirectory() as dir:
-        fn = dir + 'tmp.fits'
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fn = os.path.join(tmp_dir,'tmp.fits')
         cat.writeto(fn)
         cat2 = BaseCatalog(fn)
     assert cat2 == cat
@@ -58,14 +59,14 @@ def test_brick():
     assert len(brick.get('brickid')) == 1
     brick = bricks.get_by_radec([259.91]*2,[18.71]*2)
     assert len(brick) == 2 and np.all(brick.brickname == '2599p187')
-    radecbox = bricks.get_radecbox(all=True)
+    radecbox = bricks.get_radecbox(total=True)
     assert np.allclose(radecbox,(0.,360.,-90.,90.))
-    area = bricks.get_area(all=True)
+    area = bricks.get_area(total=True)
     assert np.allclose(area,4.*np.pi*(180./np.pi)**2)
     x,y = bricks.get_xy_from_radec([259.91]*2,[18.71]*2)
     assert (x>=0).all() and (x<=3600).all() and (y>=0).all() and (y<=3600).all()
-    with tempfile.TemporaryDirectory() as dir:
-        fn = dir + '/bricklist.txt'
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        fn = tmp_dir + '/bricklist.txt'
         brick = bricks.get_by_name(['2599p187']).write_list(fn)
         with open(fn,'r') as file:
             assert file.read().replace('\n','') == '2599p187'

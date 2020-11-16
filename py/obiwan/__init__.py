@@ -1,6 +1,5 @@
 """
-**Obiwan** is a Monte Carlo method for adding fake galaxies to Legacy Survey images,
-and re-processing the modified images with the legacypipe.
+**Obiwan** is a Monte Carlo method for adding fake galaxies to Legacy Survey images and re-processing the modified images with the legacypipe.
 
 Contains:
 - runbrick.py : **Obiwan** main executable, equivalent of ``legacypipe.runbrick``.

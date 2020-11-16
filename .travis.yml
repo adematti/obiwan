@@ -39,7 +39,7 @@ install:
     - (cd $HOME && git clone https://github.com/legacysurvey/legacypipe.git legacypipe)
     - (cd $HOME && git clone https://github.com/desihub/desiutil.git desiutil && cd desiutil && python setup.py install)
     - export PYTHONPATH=$(pwd)/py:$HOME/legacypipe/py:$HOME/astrometry.net:$HOME/unwise_psf/py:${PYTHONPATH}
-    - export PATH=${PATH}:$HOME/astrometry.net/solver:$HOME/astrometry.net/util
+    - export PATH=$HOME/astrometry.net/solver:$HOME/astrometry.net/util:${PATH}
 
 before_script:
     - mkdir -p $HOME/dust/maps

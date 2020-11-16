@@ -30,7 +30,8 @@ In interactive mode::
 
   shifter -v absolutepath:/homedir/ --image=adematti/obiwan:dr9.3 /bin/bash
 
-Obiwan with **desiconda**
-*************************
+Obiwan from scratch
+*******************
 
-In construction.
+To install **Obiwan** from scratch, the simplest way is to follow instructions in the `Travis file <https://github.com/adematti/obiwan/blob/master/.travis.yml>`_:
+first go through ``apt`` installs, then ``install``.

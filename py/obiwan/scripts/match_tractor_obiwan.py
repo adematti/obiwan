@@ -1,13 +1,12 @@
 import logging
 import numpy as np
-from ..catalog import SimCatalog
-from .. import utils
+from obiwan import SimCatalog,find_output_file,utils
 
-logger = logging.getLogger('Matching')
+logger = logging.getLogger('obiwan.matching')
 
-def match(output_dir,brickname,base='input',radius_in_degree=1.5/3600.,**kwargs_file):
+def match(output_dir, brickname, base='input', radius_in_degree=1.5/3600., **kwargs_file):
     """
-    Match and merge random input catalog to **Tractor** output.
+    Match and merge random input catalog with **Tractor** output.
 
     Input columns ``field`` are relabelled ``'sim_'+field``.
 
@@ -35,30 +34,33 @@ def match(output_dir,brickname,base='input',radius_in_degree=1.5/3600.,**kwargs_
     match : SimCatalog
         Matched catalog.
     """
-    input_fn = utils.get_output_file(output_dir,'obiwan-randoms',brickname=brickname,**kwargs_file)
-    tractor_fn = utils.get_output_file(output_dir,'tractor',brickname=brickname,**kwargs_file)
+    input_fn = find_output_file(output_dir,'randoms',brickname=brickname,**kwargs_file)
+    tractor_fn = find_output_file(output_dir,'tractor',brickname=brickname,**kwargs_file)
     logger.info('Reading input %s' % input_fn)
     logger.info('Reading Tractor %s' % tractor_fn)
 
     cat_input = SimCatalog(input_fn)
+    cat_input.cut(~cat_input.collided)
     cat_tractor = SimCatalog(tractor_fn)
 
     index_input,index_tractor = cat_input.match_radec(cat_tractor,nearest=True,radius_in_degree=radius_in_degree)
+    logger.info('Matching %d objects / %d in input, %d in output' % (index_input.size,cat_input.size,cat_tractor.size))
 
     for field in cat_input.fields:
         cat_input.rename(field,'sim_%s' % field)
 
     if base == 'input':
-        cat_input.merge(cat_tractor,index_self=index_input,index_other=index_tractor)
+        cat_input.fill(cat_tractor,index_self=index_input,index_other=index_tractor)
         return cat_input
     else:
-        cat_tractor.merge(cat_input,index_self=index_tractor,index_other=index_input)
+        cat_tractor.fill(cat_input,index_self=index_tractor,index_other=index_input)
     if base == 'output':
         return cat_tractor
     return cat_tractor[index_tractor]
 
 @utils.saveplot()
-def scatter_match(ax,values1=None,values2=None,match=None,field=None,xlabel=None,ylabel=None,square=False,regression=False,diagonal=False,kwargs_scatter={},kwargs_regression={},kwargs_diagonal={}):
+def scatter_match(ax, values1=None, values2=None, match=None, field=None, xlabel=None, ylabel=None,
+                square=False, regression=False, diagonal=False, kwargs_scatter={}, kwargs_regression={}, kwargs_diagonal={}):
     """
     Plot ``values2`` v.s. ``values1`` or ``match[field]`` v.s. ``match['sim_'+field]``.
 
@@ -103,9 +105,9 @@ def scatter_match(ax,values1=None,values2=None,match=None,field=None,xlabel=None
     kwargs_diagonal : dict, default={}
         Arguments for ``plt.plot()`` diagonal line.
     """
-    kwargs_scatter = utils.dict_default(kwargs_scatter,{'s':10,'marker':'.','alpha':1,'edgecolors':'none'})
-    kwargs_diagonal = utils.dict_default(kwargs_diagonal,{'linestyle':'--','linewidth':2,'color':'k'})
-    kwargs_regression = utils.dict_default(kwargs_regression,{'linestyle':'--','linewidth':2,'color':'r','label':''})
+    kwargs_scatter = {**{'s':10,'marker':'.','alpha':1,'edgecolors':'none'},**kwargs_scatter}
+    kwargs_diagonal = {**{'linestyle':'--','linewidth':2,'color':'k'},**kwargs_diagonal}
+    kwargs_regression = {**{'linestyle':'--','linewidth':2,'color':'r','label':''},**kwargs_regression}
     label_regression = kwargs_regression.pop('label',None)
 
     if values1 is None:

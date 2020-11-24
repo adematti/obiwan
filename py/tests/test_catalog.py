@@ -11,10 +11,11 @@ def test_base():
     cat.ra,cat.dec = cat.zeros(),cat.ones()
     assert 'ra' in cat
     assert cat.ra.size == 100
-    assert np.all(cat.dec==cat.ra+1)
+    assert np.all(cat.dec == cat.ra+1)
     assert cat.trues().all()
     assert not cat.falses().any()
     assert np.isnan(cat.nans()).all()
+    assert np.all(cat.full(4) == 4)
     cat2 = cat.copy()
     cat2.ra[:] += 1
     assert np.all(cat.ra == 0)
@@ -32,7 +33,9 @@ def test_base():
     cat2 = cat2 + cat
     assert cat2.size==200
     cat.flux = np.linspace(0.,1.,cat.size)
-    cat2.merge(cat,index_self=100+np.arange(cat.size),index_other=np.arange(cat.size))
+    cat2.fill(cat,index_self=100+np.arange(cat.size),index_other=np.arange(cat.size),fields_other=['ra','dec'])
+    assert cat2.fields == ['ra','dec']
+    cat2.fill(cat,index_self=100+np.arange(cat.size),index_other=np.arange(cat.size))
     assert 'flux' in cat2
     assert np.isnan(cat2.flux[:100]).all()
     cat2.keep_columns('ra','dec')
@@ -53,18 +56,29 @@ def test_sim():
 
 def test_brick():
     bricks = BrickCatalog()
-    brick = bricks.get_by_name('2599p187')
-    assert np.isscalar(brick.get('brickid'))
     brick = bricks.get_by_name(['2599p187'])
     assert len(brick.get('brickid')) == 1
+    brick = bricks.get_by_name('2599p187')
+    assert np.isscalar(brick.get('brickid'))
     brick = bricks.get_by_radec([259.91]*2,[18.71]*2)
     assert len(brick) == 2 and np.all(brick.brickname == '2599p187')
+    brick2 = bricks[bricks.ra1>240].get_by_radec([259.91]*2,[18.71]*2)
+    assert len(brick2) == 2 and np.all(brick2.brickname == '2599p187')
+    radecbox = brick.get_radecbox(total=False)
+    radecbox = brick.get_radecbox(total=True)
+    assert np.all([np.isscalar(x) for x in radecbox])
     radecbox = bricks.get_radecbox(total=True)
     assert np.allclose(radecbox,(0.,360.,-90.,90.))
+    area = brick.get_area(total=True)
+    assert np.isscalar(area)
     area = bricks.get_area(total=True)
     assert np.allclose(area,4.*np.pi*(180./np.pi)**2)
-    x,y = bricks.get_xy_from_radec([259.91]*2,[18.71]*2)
+    x,y = bricks.get_xy_from_radec(259.91,18.71)
+    assert np.isscalar(x) and np.isscalar(y)
+    x,y = bricks.get_xy_from_radec([259.91]*2,[18.71]*2,brickname=['2599p187']*2)
     assert (x>=0).all() and (x<=3600).all() and (y>=0).all() and (y<=3600).all()
+    x2,y2 = brick.get_xy_from_radec([259.91]*2,[18.71]*2)
+    assert np.allclose(x,x2) and np.allclose(y,y2)
     with tempfile.TemporaryDirectory() as tmp_dir:
         fn = tmp_dir + '/bricklist.txt'
         brick = bricks.get_by_name(['2599p187']).write_list(fn)

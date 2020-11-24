@@ -1,12 +1,14 @@
 """Classes to extend legacypipe."""
 
 import os
-import sys
+import re
 import logging
 import numpy as np
 from legacypipe.decam import DecamImage
 from legacypipe.bok import BokImage
 from legacypipe.mosaic import MosaicImage
+from legacypipe.ptf import PtfImage
+from legacypipe.cfht import MegaPrimeImage
 from legacypipe.survey import LegacySurveyData
 from legacypipe.runs import DecamSurvey, NinetyPrimeMosaic
 from legacypipe.runcosmos import DecamImagePlusNoise, CosmosSurvey
@@ -15,6 +17,95 @@ import tractor
 import galsim
 
 logger = logging.getLogger('obiwan.kenobi')
+
+class get_randoms_id(object):
+
+    """Handle identifier related to input random catalog: file id, row start, skip id."""
+
+    _keys = ['fileid','rowstart','skipid']
+    _defs = [0]*len(_keys)
+    _template = 'file%d_rs%d_skip%d'
+
+    @classmethod
+    def keys(cls):
+        return cls._keys
+
+    @classmethod
+    def defs(cls):
+        return cls._defs
+
+    @classmethod
+    def as_dict(cls, **kwargs):
+        return {key_: kwargs.get(key_,def_) for key_,def_ in zip(cls.keys(),cls.defs())}
+
+    @classmethod
+    def as_list(cls, **kwargs):
+        toret = cls.as_dict(**kwargs)
+        return [toret[key_] for key_ in cls.keys()]
+
+    def __new__(cls, **kwargs):
+        """Return string corresponding to input random catalog."""
+        return cls._template % tuple(cls.as_list(**kwargs))
+
+def find_file(base_dir=None, filetype=None, brickname=None, output=False, **kwargs_file):
+    """
+    Return file name.
+
+    Shortcut to ``LegacySurveySim.find_file()``.
+
+    base_dir : string, None
+        Survey (if ``output==False``) or output (if ``output==True``) directory.
+
+    filetype : string, None
+        Type of file to find.
+
+    brickname : string, None
+        Brick name.
+
+    output : bool, default=False
+        Whether we are about to write this file.
+
+    kwargs_file : dict
+        Other arguments to file paths (``get_randoms_id.keys()``).
+    """
+    survey = LegacySurveySim(survey_dir=base_dir,output_dir=base_dir,kwargs_file=kwargs_file)
+    return survey.find_file(filetype,brick=brickname,output=output)
+
+def find_survey_file(survey_dir, filetype, brickname=None, **kwargs_file):
+    """
+    Return survey file name.
+
+    survey_dir : string
+        Survey directory.
+
+    filetype : string
+        Type of file to find.
+
+    brickname : string
+        Brick name.
+
+    kwargs_file : dict
+        Other arguments to file paths (``get_randoms_id.keys()``).
+    """
+    return find_file(base_dir=survey_dir,filetype=filetype,brickname=brickname,output=False,**kwargs_file)
+
+def find_output_file(output_dir, filetype, brickname=None, **kwargs_file):
+    """
+    Return Obiwan output file name.
+
+    output_dir : string
+        Obiwan output directory.
+
+    filetype : string
+        Type of file to find.
+
+    brickname : string
+        Brick name.
+
+    kwargs_file : dict
+        Other arguments to file paths (``get_randoms_id.keys()``).
+    """
+    return find_file(base_dir=output_dir,filetype=filetype,brickname=brickname,output=True,**kwargs_file)
 
 class LegacySurveySim(LegacySurveyData):
 
@@ -36,8 +127,8 @@ class LegacySurveySim(LegacySurveyData):
         sim_stamp : string, default='tractor'
             Method to simulate objects, either 'tractor' (``TractorSimStamp``) or 'galsim' (``GalSimStamp``).
 
-        add_sim_noise : bool, default=False
-            Add Poisson noise from the simulated source to the image.
+        add_sim_noise : string, default=False
+            Add noise from the simulated source to the image. Choices: ['gaussian','poisson'].
 
         image_eq_model : bool, default=False
             Wherever add a simulated source, replace both image and inverse variance of the image
@@ -47,21 +138,24 @@ class LegacySurveySim(LegacySurveyData):
             For random number generators.
 
         kwargs_file : dict, default={}
-            Used to specify output paths, see ``self.find_file()``.
+            Extra arguments to file paths (``get_randoms_id.keys()``).
 
         kwargs : dict, default={}
             Arguments for ``legacypipe.survey.LegacySurveyData``.
         """
         super(LegacySurveySim, self).__init__(*args,**kwargs)
-        self.update_sim(simcat=simcat,sim_stamp=sim_stamp,add_sim_noise=add_sim_noise,
-                        image_eq_model=image_eq_model,seed=seed,kwargs_file=kwargs_file)
+        self.update_sim(simcat=simcat, sim_stamp=sim_stamp, add_sim_noise=add_sim_noise,
+                        image_eq_model=image_eq_model, seed=seed, kwargs_file=kwargs_file)
 
     def update_sim(self,**kwargs):
         self.image_typemap = {
-            'decam' : DecamSimImage,
-            'decam+noise' : DecamSimImagePlusNoise,
-            'mosaic' : MosaicSimImage,
-            '90prime' : BokSimImage,
+            'decam': DecamSimImage,
+            'decam+noise': DecamSimImagePlusNoise,
+            'mosaic': MosaicSimImage,
+            'mosaic3': MosaicSimImage,
+            '90prime': BokSimImage,
+            'ptf': PtfSimImage,
+            'megaprime': MegaPrimeSimImage,
             }
         for key,val in kwargs.items():
             setattr(self,key,val)
@@ -84,19 +178,18 @@ class LegacySurveySim(LegacySurveyData):
         ----------
         filetype : string
             Type of file to find, including:
-            `obiwan-randoms` -- Obiwan catalogues
-            `obiwan-metadata` -- Obiwan metadata
+            `randoms` -- input random catalogues
             `tractor` -- Tractor catalogs
             `depth`   -- PSF depth maps
             `galdepth` -- Canonical galaxy depth maps
             `nexp` -- number-of-exposure maps.
 
-        output : bool
-            Whether we are about to write this file; will use ``self.output_dir`` as
-            the base directory rather than ``self.survey_dir``.
-
         brick : string, defaut=None
             Brick name.
+
+        output : bool, default=False
+            Whether we are about to write this file; will use ``self.output_dir`` as
+            the base directory rather than ``self.survey_dir``.
 
         kwargs : dict, default={}
             Arguments for ``super(LegacySurveyData,self).find_file()``.
@@ -106,27 +199,28 @@ class LegacySurveySim(LegacySurveyData):
         fn : string
             Path to the specified file (whether or not it exists).
         """
-        if filetype == 'obiwan-randoms':
-            fn = super(LegacySurveySim,self).find_file('tractor',brick=brick,output=output,**kwargs)
-            assert 'tractor' in fn # make sure not to overwrite tractor files
-            dirname = os.path.dirname(fn).replace('tractor','obiwan')
-            basename = os.path.basename(fn).replace('tractor','randoms')
+        if filetype == 'randoms':
+            tractor_fn = super(LegacySurveySim,self).find_file('tractor',brick=brick,output=output,**kwargs)
+            dirname = os.path.dirname(tractor_fn)
+            dirname = os.path.join(os.path.dirname(os.path.dirname(dirname)),'obiwan',os.path.basename(dirname))
+            basename = os.path.basename(tractor_fn).replace('tractor','randoms')
             fn = os.path.join(dirname,basename)
+            if fn == tractor_fn: # make sure not to overwrite Tractor catalogs
+                raise ValueError('Obiwan random path is the same as Tractor catalog = %s' % tractor_fn)
         else:
             fn = super(LegacySurveySim,self).find_file(filetype,brick=brick,output=output,**kwargs)
 
         if brick is None:
             brick = '%(brick)s'
 
-        def rsdir(fileid=0,rowstart=0,skipid=0):
-            return 'file%d_rs%d_skip%d' % (fileid,rowstart,skipid)
-
         def wrap(fn):
             basename = os.path.basename(fn)
             dirname = os.path.dirname(fn)
-            if 'coadd/' in dirname: return os.path.join(dirname,rsdir(**self.kwargs_file),basename)
-            if 'obiwan/' in dirname or 'metrics/' in dirname or 'tractor/' in dirname or 'tractor-i/' in dirname:
-                return os.path.join(dirname,brick,rsdir(**self.kwargs_file),basename)
+            ddirname = os.path.dirname(dirname)
+            if os.path.dirname(ddirname).endswith('/coadd'):
+                return os.path.join(ddirname,brick,get_randoms_id(**self.kwargs_file),basename)
+            if ddirname.endswith('/obiwan') or ddirname.endswith('/metrics') or ddirname.endswith('/tractor') or ddirname.endswith('/tractor-i'):
+                return os.path.join(dirname,brick,get_randoms_id(**self.kwargs_file),basename)
             return fn
 
         if isinstance(fn,list):
@@ -145,40 +239,19 @@ class CosmosSim(LegacySurveySim,CosmosSurvey):
     Call with LegacySurveySim arguments plus additional CosmosSurvey argument ``subset``.
     """
 
-    def filter_ccd_kd_files(self, fns):
-        return [fn for fn in fns if 'decam+noise' in fn]
-    def filter_ccds_files(self, fns):
-        return [fn for fn in fns if 'decam+noise' in fn]
-    def filter_annotated_ccds_files(self, fns):
-        return [fn for fn in fns if 'decam+noise' in fn]
-    def get_default_release(self):
-        return 9007
+    pass
 
 class DecamSim(LegacySurveySim,DecamSurvey):
 
     """Extend ``LegacySurveySim`` with a filter for DECam CCDs."""
 
-    def filter_ccd_kd_files(self, fns):
-        return [fn for fn in fns if 'decam' in fn]
-    def filter_ccds_files(self, fns):
-        return [fn for fn in fns if 'decam' in fn]
-    def filter_annotated_ccds_files(self, fns):
-        return [fn for fn in fns if 'decam' in fn]
-    def get_default_release(self):
-        return 9008
+    pass
 
 class NinetyPrimeMosaicSim(LegacySurveySim,NinetyPrimeMosaic):
 
     """Extend ``LegacySurveySim`` with a filter for mosaic or 90prime CCDs."""
 
-    def filter_ccd_kd_files(self, fns):
-        return [fn for fn in fns if ('90prime' in fn) or ('mosaic' in fn)]
-    def filter_ccds_files(self, fns):
-        return [fn for fn in fns if ('90prime' in fn) or ('mosaic' in fn)]
-    def filter_annotated_ccds_files(self, fns):
-        return [fn for fn in fns if ('90prime' in fn) or ('mosaic' in fn)]
-    def get_default_release(self):
-        return 9009
+    pass
 
 runs = {
     'decam': DecamSim,
@@ -203,24 +276,24 @@ def get_survey(name, **kwargs):
 
 class GSImage(galsim.Image):
 
-    """Extend ``galsim.Image``, to bypass array privacy."""
+    """Extend ``galsim.Image``, with other ``__setitem__`` options."""
 
-    def __setitem__(self,*args):
-        """Extend ``galsim.Image.__setitem__`` to allow numpy-style ``self[mask] = ...``"""
-        if (len(args) == 2) and isinstance(args[0],np.ndarray):
-            self._array[args[0]] = args[1]
-        else:
-            super(GSImage,self).__setitem__(*args)
+    def __setitem__(self, *args):
+        """
+        Extend ``galsim.Image.__setitem__`` to allow:
+        - numpy-style ``self[ndarray1] = ndarray2``
+        - hybdrid-style ``self[bounds] = ndarray``
+        """
+        if (len(args) == 2):
+            # allows numpy-style ``self[ndarray1] = ndarray2``
+            if isinstance(args[0], np.ndarray):
+                self._array[args[0]] = args[1]
+                return
+            # allows settings ``self[bounds] = ndarray``
+            elif isinstance(args[0], galsim.BoundsI) and isinstance(args[1], np.ndarray):
+                args = (args[0],self.__class__(args[1], bounds=args[0]))
+        super(GSImage,self).__setitem__(*args)
 
-    @property
-    def array(self):
-        """Return private attribute ``self._array``."""
-        return self._array
-
-    @array.setter
-    def array(self,array):
-        """Set private attribute ``self._array``."""
-        self._array = array
 
 def _Image(array, bounds, wcs):
     """
@@ -241,37 +314,17 @@ def _Image(array, bounds, wcs):
 
 galsim.image._Image = _Image
 
-def sum_invar(stamp_invar,tim_invar):
-    """
-    Return the harmonic sum of ``stamp_invar`` and ``tim_invar``.
-
-    Return ``tim_invar`` where ``stamp_invar == 0``.
-
-    Parameters
-    ----------
-    stamp_invar : GSImage
-        Inverse variance.
-
-    tim_invar : GSImage
-        Inverse variance.
-
-    Returns
-    -------
-    obj_invar : GSImage
-        Inverse variance.
-    """
-    obj_invar = tim_invar.copy()
-    obj_invar[stamp_invar.array>0] = (stamp_invar.array[stamp_invar.array>0]**(-1) + tim_invar.array[stamp_invar.array>0]**(-1))**(-1)
-    return obj_invar
-
-
 class BaseSimImage(object):
+
     """Dumb class that extends ``self.get_tractor_image()`` for future multiple inheritance."""
 
     def get_tractor_image(self, **kwargs):
 
-        get_dq = kwargs.get('dq',True)
+        get_dq = kwargs.get('dq', True)
         kwargs['dq'] = True # dq required in the following
+        if not kwargs.get('nanomaggies', True):
+            raise NotImplementedError('In Obiwan, images are assumed to be in nanomaggies.')
+        #print('slice',kwargs['slc'])
         tim = super(BaseSimImage,self).get_tractor_image(**kwargs)
 
         if tim is None: # this can be None when the edge of a CCD overlaps
@@ -280,101 +333,245 @@ class BaseSimImage(object):
         #shot the image to 0
         #tim.data = np.zeros(tim.data.shape)
         if self.survey.sim_stamp == 'tractor':
-            objstamp = TractorSimStamp(self,tim)
+            objstamp = TractorSimStamp(tim)
         else:
-            objstamp = GalSimStamp(self,tim)
+            objstamp = GalSimStamp(tim)
 
         # Grab the data and inverse variance images [nanomaggies!]
-        tim_image = GSImage(tim.getImage())
-        tim_invar = GSImage(tim.getInvvar())
-        tim_dq = GSImage(tim.dq)
+        tim_image = GSImage(tim.getImage(),xmin=1,ymin=1)
+        with np.errstate(divide='ignore', invalid='ignore'):
+            tim_var = GSImage(1./tim.getInvvar(),xmin=1,ymin=1)
+        tim_dq = GSImage(tim.dq,xmin=1,ymin=1)
         if not get_dq: del tim.dq
         # Also store galaxy sims and sims invvar
         sims_image = tim_image.copy()
         sims_image.fill(0.)
-        sims_invar = sims_image.copy()
+        sims_var = sims_image.copy()
 
         if self.survey.simcat is None:
             return tim
 
         # Store simulated galaxy images in tim object
         # Loop on each object.
+        any_overlap = False
         for obj in self.survey.simcat:
-            # Print timing
             t0 = Time()
-            logger.info('Drawing object id=%d: sersic=%.2f, shape_r=%.2f, shape_e1=%.2f, shape_e2=%.2f' %
-                 (obj.id,obj.sersic,obj.shape_r,obj.shape_e1,obj.shape_e2))
+            logger.info('%s drawing object id=%d, band=%s: flux=%.2g, sersic=%.2f, shape_r=%.2f, shape_e1=%.2f, shape_e2=%.2f' %
+                 (objstamp.__class__.__name__,obj.id,objstamp.band,obj.get('flux_%s' % objstamp.band),obj.sersic,obj.shape_r,obj.shape_e1,obj.shape_e2))
             stamp = objstamp.draw(obj)
-            t0 = logger.info('%s finished drawing object id=%d: band=%s dbflux=%f addedflux=%f in %s' %
-                (objstamp.__class__.__name__,obj.id,objstamp.band,obj.get('flux_%s' % objstamp.band),stamp.array.sum(),Time()-t0))
-            #stamp_nonoise = stamp.copy()
-            if self.survey.add_sim_noise:
-                stamp += objstamp.get_noise_gaussian(stamp)
-            stamp_invar = objstamp.get_invar_poisson(stamp)
-            # Add source if EVEN 1 pix falls on the CCD
+            if stamp is None:
+                logger.debug('Stamp does not overlap tim for object id=%d' % obj.id)
+                continue
+            t0 = logger.debug('Finished drawing object id=%d: band=%s flux=%.2f addedflux=%.2f in %s' %
+                (obj.id,objstamp.band,obj.get('flux_%s' % objstamp.band),stamp.array.sum(),Time()-t0))
             overlap = stamp.bounds & tim_image.bounds
+            # Add source if at least 1 pix falls on the CCD
             if overlap.area() > 0:
-                logger.info('Stamp overlaps tim: id=%d band=%s' % (obj.id,objstamp.band))
-                #self.survey.simcat.added[ii] = True
-                stamp = stamp[overlap]
-                stamp_invar = stamp_invar[overlap]
-                #stamp_nonoise = stamp_nonoise[overlap]
-                # Zero out invar where bad pixel mask is flagged (> 0)
-                stamp_invar[tim_dq[overlap].array > 0] = 0.
+                any_overlap = True
+                logger.debug('Stamp overlaps tim: id=%d band=%s' % (obj.id,objstamp.band))
+
+                stamp = stamp[overlap].array
+                nano2e = self.get_nano2e(tim=tim,x=np.arange(overlap.xmin,overlap.xmax+1),y=np.arange(overlap.ymin,overlap.ymax+1))
+
+                if self.survey.add_sim_noise:
+                    stamp_pos = stamp.clip(0)
+                    if self.survey.add_sim_noise == 'gaussian':
+                        logger.debug('Adding Gaussian noise.')
+                        stamp += np.sqrt(stamp_pos)/np.sqrt(nano2e)*self.survey.rng.randn(*stamp.shape)
+                    else: # poisson
+                        logger.debug('Adding Poisson noise.')
+                        stamp += self.survey.rng.poisson(stamp_pos*nano2e,size=stamp.shape)/nano2e - stamp_pos
                 # Add stamp to image
                 tim_image[overlap] += stamp
-                # Add variances
-                tim_invar[overlap] = sum_invar(stamp_invar, tim_invar[overlap])
-                #Extra
+                # Compute stamp variance
+                stamp_var = np.abs(stamp)/nano2e
+                stamp_var[tim_dq[overlap].array > 0] = 0.
+                tim_var[overlap] += stamp_var
+                # Extra
                 sims_image[overlap] += stamp
-                sims_invar[overlap] += stamp_invar
+                sims_var[overlap] += stamp_var
 
-                if np.min(sims_invar.array) < 0:
-                    logger.warning('Negative invvar!')
-                    import pdb ; pdb.set_trace()
-        #f.close()
         tim.sims_image = sims_image.array
-        sims_invar = np.zeros_like(sims_image.array)
-        sims_invar[sims_image.array > 0.] = 1./sims_image.array[sims_image.array > 0.]
-        tim.sims_inverr = 1./np.sqrt(sims_invar)
-        # Can set image=model, invar=1/model for testing
+        tim.sims_inverr = np.zeros_like(tim.sims_image)
+        tim.sims_inverr[sims_var.array>0] = np.sqrt(1./sims_var.array[sims_var.array>0])
         if self.survey.image_eq_model:
             tim.data = tim.sims_image
             tim.inverr = tim.sims_inverr
-        else:
+        elif any_overlap: # no need to update if there was no overlap
             tim.data = tim_image.array
-            tim.setInvvar(tim_invar.array)
-        sys.stdout.flush()
+            tim.setInvvar(1./tim_var.array)
+
         return tim
 
+    def get_zpscale(self):
+        """Return zpscale for image units to nanomaggies conversion."""
+        return tractor.NanoMaggies.zeropointToScale(self.ccdzpt)
 
 #class BaseSimImage(object):
 #    pass
 
-
 class DecamSimImage(BaseSimImage,DecamImage):
 
-    """Extend ``BaseSimImage`` with ``DecamImage``."""
+    """
+    Extend ``BaseSimImage`` with ``DecamImage``.
 
-    pass
+    Note: image unit is ADU (x gain -> electrons).
+
+    References
+    ----------
+    http://ast.noao.edu/sites/default/files/NOAO_DHB_v2.2.pdf
+    """
+
+    def get_gain(self, tim, x, y):
+        """
+        Return gain at the one-indexed pixel position ``x``, ``y`` in the ``tim`` subimage.
+
+        Parameters
+        ----------
+        tim : tractor.Image
+            Current tractor.Image.
+
+        x : int, array-like
+            Pixel one-indexed x-position in the ``tim`` subimage, 1-dim.
+
+        y : int, array-like
+            Pixel one-indexed y-position in the ``tim`` subimage, 1-dim.
+
+        Returns
+        -------
+        gain : float, array-like
+            Gain (ADU x gain -> electrons).
+        """
+        #print(self.width,self.height,self.survey.add_sim_noise,tim.x0,tim.y0,tim.hdr['GAINA'],tim.hdr['GAINB'])
+        isscalarx,isscalary = np.isscalar(x),np.isscalar(y)
+        def return_gain(g):
+            if isscalarx: g = g[...,0]
+            return g
+        sipx = np.atleast_1d(tim.x0+x)
+        assert sipx.ndim == 1
+        gain = np.full(len(sipx) if isscalary else (len(y),len(sipx)),tim.hdr['GAINA'])
+        halfw = self.width//2
+        if halfw != 1023:
+            logger.warning('Found halfw = %d for %s (expected 1023), defaults to average(GAINA,GAINB).' % (halfw,self.camera))
+            gain[...] = np.average([tim.hdr['GAINA'],tim.hdr['GAINB']])
+            return return_gain(gain)
+        if self.ccdname.startswith('N'):
+            maskb = sipx > halfw
+        elif self.ccdname.startswith('S'):
+            maskb = sipx <= halfw #sigpx 1-indexed
+        else:
+            raise ValueError('ccdname is expected to end with N or S')
+        gain[...,maskb] = tim.hdr['GAINB']
+        return return_gain(gain)
+
+    def get_nano2e(self, *args, **kwargs):
+        """Return nanomaggies to electron counts conversion."""
+        return self.get_zpscale()*self.get_gain(*args,**kwargs)
 
 class BokSimImage(BaseSimImage,BokImage):
 
-    """Extend ``BaseSimImage`` with ``BokImage``."""
+    """
+    Extend ``BaseSimImage`` with ``BokImage``.
 
-    pass
+    Note: image unit is electrons/second (x exptime -> electrons).
+    """
+
+    def get_nano2e(self, *args, **kwargs):
+        """Return nanomaggies to electron counts conversion."""
+        return self.get_zpscale()*self.exptime
 
 class MosaicSimImage(BaseSimImage,MosaicImage):
 
-    """Extend ``BaseSimImage`` with ``MosaicImage``."""
+    """
+    Extend ``BaseSimImage`` with ``MosaicImage``.
 
-    pass
+    Note: image unit is electrons/second (x exptime -> electrons).
+    """
+
+    def get_nano2e(self, *args, **kwargs):
+        """Return nanomaggies to electron counts conversion."""
+        return self.get_zpscale()*self.exptime
 
 class DecamSimImagePlusNoise(BaseSimImage,DecamImagePlusNoise):
 
-    """Extend ``BaseSimImage`` with ``DecamImagePlusNoise``."""
+    """
+    Extend ``BaseSimImage`` with ``DecamImagePlusNoise``.
 
-    pass
+    Note: image unit is ADU (x gain -> electrons).
+    Warning: conversion should be checked further!
+    """
+
+    def get_gain(self, *args, **kwargs):
+        """Return gain."""
+        raise NotImplementedError
+
+    def get_nano2e(self, *args, **kwargs):
+        """Return nanomaggies to electron counts conversion."""
+        raise NotImplementedError
+
+class PtfSimImage(BaseSimImage,PtfImage):
+
+    """
+    Extend ``BaseSimImage`` with ``PtfImage``.
+
+    Note: image unit is ADU (x gain -> electrons).
+    """
+
+    def get_gain(self, tim, *args, **kwargs):
+        """Return gain."""
+        return tim.hdr['GAIN']
+
+    def get_nano2e(self, *args, **kwargs):
+        """Return nanomaggies to electron counts conversion."""
+        return self.get_zpscale()*self.get_gain(*args,**kwargs)
+
+class MegaPrimeSimImage(BaseSimImage,MegaPrimeImage):
+
+    """
+    Extend ``BaseSimImage`` with ``MegaPrimeImage``.
+
+    Note: image unit is ADU (x gain -> electrons).
+
+    References
+    ----------
+    https://www.cfht.hawaii.edu/Instruments/Imaging/MegaPrime/rawdata.html#P2
+    """
+
+    def get_gain(self, tim, x, y):
+        """
+        Return gain at the one-indexed pixel position ``x``, ``y`` in the ``tim`` subimage.
+
+        Parameters
+        ----------
+        tim : tractor.Image
+            Current tractor.Image.
+
+        x : int, array-like
+            Pixel one-indexed x-position in the ``tim`` subimage, 1-dim.
+
+        y : int, array-like
+            Pixel one-indexed y-position in the ``tim`` subimage, 1-dim.
+
+        Returns
+        -------
+        gain : float, array-like
+            Gain (ADU x gain -> electrons).
+        """
+        #print(self.width,self.height,self.survey.add_sim_noise,tim.x0,tim.y0,tim.hdr['GAINA'],tim.hdr['GAINB'])
+        isscalarx,isscalary = np.isscalar(x),np.isscalar(y)
+        sipx = np.atleast_1d(tim.x0+x)
+        assert sipx.ndim == 1
+        gain = np.full(len(sipx) if isscalary else (len(y),len(sipx)),tim.hdr['GAINA'])
+        limb = [int(s) for s in re.findall(r'\w+',tim.hdr['CSECB'])]
+        maskb = (sipx >= limb[0]) & (sipx <= limb[1])
+        gain[...,maskb] = tim.hdr['GAINB']
+        if isscalarx:
+            gain = gain[...,0]
+        return gain
+
+    def get_nano2e(self, *args, **kwargs):
+        """Return nanomaggies to electron counts conversion."""
+        return self.get_zpscale()*self.get_gain(*args, **kwargs)
 
 class BaseSimStamp(object):
 
@@ -384,35 +581,23 @@ class BaseSimStamp(object):
     Parent class to be inherited from to build different galaxy models.
     """
 
-    def __init__(self,image,tim,**attrs):
+    def __init__(self, tim, **attrs):
         """
         Instantiate ``BaseSimStamp``.
 
         Parameters
         ----------
-        image : LegacySurveyImage
-            Current ``LegacySurveyImage``.
-
         tim : tractor.Image
             Current tractor.Image.
 
         attrs : dict, default={}
             Other attributes useful to define patches (e.g. ``nx``, ``ny``).
         """
-        self.band = tim.band.strip()
-        self.zpscale = tim.zpscale
+        self.band = tim.band
+        self.tim = tim
         self.attrs = attrs
 
-        # nanomaggies-->ADU (decam) or e-/sec (bass,mzls)
-        if image.camera == 'decam':
-            gain = np.average([tim.hdr['GAINA'],tim.hdr['GAINB']])
-            self.nano2e = self.zpscale*gain
-        else:
-            self.nano2e = self.zpscale
-        self.tim = tim
-        self.rng = image.survey.rng
-
-    def set_local(self,ra,dec):
+    def set_local(self, ra, dec):
         """
         Set local ``self.xcen``, ``self.ycen`` coordinates.
 
@@ -424,51 +609,8 @@ class BaseSimStamp(object):
         dec : float
             Declination (degree).
         """
-        # x,y coordinates start at +1
+        # x,y coordinates one-indexed, as GSImage
         self.xcen, self.ycen = self.tim.subwcs.radec2pixelxy(ra,dec)[1:]
-
-    def get_noise_gaussian(self,gim):
-        """
-        Return a ``GSImage`` with random Gaussian noise corresponding to ``gim``.
-
-        Parameters
-        ----------
-        gim : GSImage
-            Input image.
-
-        Returns
-        -------
-        noise : GSImage
-            Noise.
-        """
-        # Noise model + no negative image vals when compute noise
-        noise = gim.copy()
-        one_std_per_pix = noise.array
-        one_std_per_pix[one_std_per_pix < 0] = 0
-        one_std_per_pix = np.sqrt(one_std_per_pix * self.nano2e) # e-
-        num_stds = self.rng.randn(*one_std_per_pix.shape)
-        noise.array = one_std_per_pix * num_stds / self.nano2e #nanomaggies
-        return noise
-
-    def get_invar_poisson(self,gim):
-        """
-        Return a ``GSImage`` with Poisson inverse variance corresponding to gim.
-
-        Parameters
-        ----------
-        gim : GSImage
-            Input image.
-
-        Returns
-        -------
-        invar : GSImage
-            Inverse variance.
-        """
-        invar = gim.copy() #nanomaggies
-        #invar.array[:] = 0
-        #invar.array[gim.array!=0] = self.nano2e**2/np.abs(gim.array[gim.array!=0]*self.nano2e)
-        invar.array = self.nano2e**2/np.abs(gim.array*self.nano2e)
-        return invar
 
 
 class TractorSimStamp(BaseSimStamp):
@@ -491,20 +633,15 @@ class TractorSimStamp(BaseSimStamp):
         """
         nx = self.attrs.get('nx',64)
         ny = self.attrs.get('ny',64)
-        xlow,ylow = nx//2+1,ny//2+1
-        xhigh,yhigh = nx-xlow-1,ny-ylow-1
+        xlow,ylow = nx//2,ny//2
+        xhigh,yhigh = nx-xlow,ny-ylow
         # size of the stamp is 64*64, so get an image of the same size, unless it's around the edge
-        xcen_int,ycen_int = round(self.xcen),round(self.ycen)
-        # note: boundary need to be checked to see if it's consistent !TODO
-        self.sx0,self.sx1,self.sy0,self.sy1 = xcen_int-xlow,xcen_int+xhigh,ycen_int-ylow,ycen_int+yhigh
-        h,w = self.tim.shape
-        self.sx0 = np.clip(self.sx0, 0, w-1)
-        self.sx1 = np.clip(self.sx1, 0, w-1) + 1
-        self.sy0 = np.clip(self.sy0, 0, h-1)
-        self.sy1 = np.clip(self.sy1, 0, h-1) + 1
-        return self.tim.subimage(self.sx0,self.sx1,self.sy0,self.sy1)
+        xcen_int,ycen_int = round(self.xcen-1),round(self.ycen-1) # zero-indexed
+        self.slcx,self.slcy = (xcen_int-xlow,xcen_int+xhigh),(ycen_int-ylow,ycen_int+yhigh)
+        self.slcx,self.slcy = np.clip(self.slcx,0,None),np.clip(self.slcy,0,None)
+        return self.tim.subimage(*self.slcx,*self.slcy) # zero-indexed
 
-    def draw(self,obj):
+    def draw(self, obj):
         """
         Return a ``GSImage`` with ``obj`` in the center.
 
@@ -519,27 +656,29 @@ class TractorSimStamp(BaseSimStamp):
 
         Returns
         -------
-        gim : GSImage
-            Image with ``obj``.
+        gim : GSImage, None
+            Image with ``obj`` if the stamp overlaps the tim, else None.
         """
-        ra,dec,flux = obj.ra,obj.dec,obj.get('flux_%s' % self.band)
-        sersic,shape_r,shape_e1,shape_e2 = obj.sersic,obj.shape_r,obj.shape_e1,obj.shape_e2
-        pos = tractor.RaDecPos(ra,dec)
+        self.set_local(obj.ra,obj.dec)
+        subimg = self.get_subimage()
+        if not all(subimg.shape):
+            return None
+        flux = obj.get('flux_%s' % self.band)
+        pos = tractor.RaDecPos(obj.ra,obj.dec)
         brightness = tractor.NanoMaggies(**{self.band:flux,'order':[self.band]})
-        sersicindex = tractor.sersic.SersicIndex(sersic)
-        if (shape_r==0.) or (sersic==0):
+        sersicindex = tractor.sersic.SersicIndex(obj.sersic)
+        if (obj.shape_r==0.) or (obj.sersic==0):
             src = tractor.PointSource(pos,brightness)
         else:
-            shape = tractor.EllipseESoft(logre=np.log(shape_r),ee1=shape_e1,ee2=shape_e2)
-            src = tractor.SersicGalaxy(pos=pos,brightness=brightness,
+            shape = tractor.EllipseESoft(np.log(obj.shape_r),obj.shape_e1,obj.shape_e2)
+            src = tractor.sersic.SersicGalaxy(pos=pos,brightness=brightness,
                                        shape=shape,sersicindex=sersicindex)
             #if sersic==1: src = tractor.ExpGalaxy(pos=pos,brightness=brightness,shape=shape)
             #elif sersic==4: src = tractor.DevGalaxy(pos=pos,brightness=brightness,shape=shape)
             #else: raise ValueError('sersic = %s should be 1 or 4' % sersic)
-        self.set_local(ra,dec)
-        new = tractor.Tractor([self.get_subimage()], [src])
+        new = tractor.Tractor([subimg], [src])
         mod0 = new.getModelImage(0)
-        gim = GSImage(mod0,xmin=self.sx0+1,ymin=self.sy0+1)
+        gim = GSImage(mod0,xmin=self.slcx[0]+1,ymin=self.slcy[0]+1) # one-indexed
         return gim
 
 
@@ -547,7 +686,7 @@ class GalSimStamp(BaseSimStamp):
 
     """Extend ``BaseSimStamp`` with generation of GalSim objects."""
 
-    def set_local(self,ra,dec):
+    def set_local(self, ra, dec):
         """
         Extend ``super(GalSimStamp,self).set_local()`` by setting pixel ``self.scale``,
         ``self.psf`` and object integer and fractional positions ``self.offsetint`` and ``self.offsetfrac``.
@@ -571,7 +710,7 @@ class GalSimStamp(BaseSimStamp):
         self.offsetint = galsim.PositionI(int(self.xcen),int(self.ycen))
         self.offsetfrac = galsim.PositionD(frac(self.xcen),frac(self.ycen))
 
-    def draw(self,obj):
+    def draw(self, obj):
         """
         Return a ``GSImage`` with ``obj`` in the center.
 
@@ -589,15 +728,14 @@ class GalSimStamp(BaseSimStamp):
         gim : GSImage
             Image with ``obj``.
         """
-        ra,dec,flux = obj.ra,obj.dec,obj.get('flux_%s' % self.band)
-        sersic,shape_r,shape_e1,shape_e2 = obj.sersic,obj.shape_r,obj.shape_e1,obj.shape_e2
+        self.set_local(obj.ra,obj.dec)
+        flux = obj.get('flux_%s' % self.band)
         gsparams = galsim.GSParams(maximum_fft_size=256**2)
-        if (shape_r==0.) or (sersic==0):
+        if (obj.shape_r==0.) or (obj.sersic==0):
             src = galsim.DeltaFunction(flux=flux,gsparams=gsparams)
         else:
-            src = galsim.Sersic(sersic,half_light_radius=shape_r,flux=flux,gsparams=gsparams)
-            src = src.shear(e1=shape_e1,e2=shape_e2)
-        self.set_local(ra,dec)
+            src = galsim.Sersic(obj.sersic,half_light_radius=obj.shape_r,flux=flux,gsparams=gsparams)
+            src = src.shear(g1=obj.shape_e1,g2=obj.shape_e2)
         src = galsim.Convolve([src,self.psf])
         gim = src.drawImage(method='auto',scale=self.scale,
                             use_true_center=False,offset=self.offsetfrac)

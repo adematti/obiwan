@@ -36,7 +36,7 @@ install:
     - (cd $HOME/astrometry.net && git pull) || (rm -Rf $HOME/astrometry.net && cd $HOME && git clone https://github.com/dstndstn/astrometry.net.git);
     - (cd $HOME/astrometry.net && make && make py)
     - (cd $HOME && git clone https://github.com/legacysurvey/unwise_psf.git && cd unwise_psf && git checkout dr9.3)
-    - (cd $HOME && git clone https://github.com/legacysurvey/legacypipe.git legacypipe)
+    - (cd $HOME && git clone https://github.com/legacysurvey/legacypipe.git legacypipe && cd legacypipe && git checkout tags/DR9.6.7)
     - (cd $HOME && git clone https://github.com/desihub/desiutil.git desiutil && cd desiutil && python setup.py install)
     - export PYTHONPATH=$(pwd)/py:$HOME/legacypipe/py:$HOME/astrometry.net:$HOME/unwise_psf/py:${PYTHONPATH}
     - export PATH=$HOME/astrometry.net/solver:$HOME/astrometry.net/util:${PATH}
@@ -48,7 +48,7 @@ before_script:
     - export DUST_DIR=$HOME/dust
 
 script:
-    - (cd py && coverage run tests/test_runbrick.py && coverage run -m pytest tests/ && coverage combine)
+    - (cd py && coverage run tests/test_runbrick_legacypipe.py && coverage run -m pytest tests/ && coverage combine)
 
 after_success:
     - (cd py && coveralls)

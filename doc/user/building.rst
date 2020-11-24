@@ -1,37 +1,62 @@
+.. _user-building:
+
 Building
-########
+========
 
 The software stack is rather complicated. **Obiwan** is a wrapper around **legacypipe**, which has many dependences.
-So there are two methods for installing everything, **Docker** and **desiconda**.
+So there are two methods for installing everything, **Docker** and from scratch.
 
 Obiwan with Docker
-********************
+------------------
 
 **Docker** is the preferred method, as **Obiwan** can be run from a laptop and NERSC using the same **Docker** image.
+The **Docker** image is available on :dockerroot:`Docker Hub <>`.
 
-The **Docker** image is available on Docker Hub: `Obiwan docker <https://hub.docker.com/r/adematti/obiwan>`_. First pull::
+On your laptop
+^^^^^^^^^^^^^^
 
-  docker pull adematti/obiwan:dr9.3
+First pull::
+
+  docker pull {dockerimage}
 
 To run on-the-fly::
 
-  docker run adematti/obiwan:dr9.3 ./yourscript.sh
+  docker run {dockerimage} ./yourscript.sh
 
 Or in interactive mode, you can bind mount your working directory ``absolutepath``::
 
-  docker run -v absolutepath:/homedir/ -it adematti/obiwan:dr9.3 /bin/bash
+  docker run --volume absolutepath:/homedir/ -it {dockerimage} /bin/bash
 
-which allows you to work as usual (type ``exit`` to exit). On NERSC::
+which allows you to work as usual (type ``exit`` to exit).
 
-  shifterimg -v pull adematti/obiwan:dr9.3
-  shifter --module=mpich-cle6 --image=adematti/obiwan:dr9.3 ./yourscript.sh
+On NERSC
+^^^^^^^^
+
+First pull::
+
+  shifterimg -v pull {dockerimage}
+
+To run on-the-fly::
+
+  shifter --module=mpich-cle6 --image={dockerimage} ./yourscript.sh
 
 In interactive mode::
 
-  shifter -v absolutepath:/homedir/ --image=adematti/obiwan:dr9.3 /bin/bash
+  shifter --volume absolutepath:/homedir/ --image={dockerimage} /bin/bash
+
+.. note::
+
+  For further information on **shifter**, see `shifter docs`_.
 
 Obiwan from scratch
-*******************
+-------------------
 
-To install **Obiwan** from scratch, the simplest way is to follow instructions in the `Travis file <https://github.com/adematti/obiwan/blob/master/.travis.yml>`_:
+To install **Obiwan** from scratch, the simplest way is to follow instructions in the :root:`Travis file <.travis.yml>`:
 first go through ``apt`` installs, then ``install``.
+
+References
+----------
+
+.. target-notes::
+
+.. _`shifter docs`: https://shifter.readthedocs.io/

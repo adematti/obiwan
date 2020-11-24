@@ -7,62 +7,27 @@ import functools
 import numpy as np
 from matplotlib import pyplot as plt
 from astrometry.libkd import spherematch
-from .kenobi import LegacySurveySim
 
 logger = logging.getLogger('obiwan.utils')
 
-def setup_logging(level=logging.INFO):
-    """Set up logging, legacypipe style..."""
-    logging.basicConfig(level=level, format='%(message)s', stream=sys.stdout)
-
-def get_survey_file(survey_dir,filetype,brickname=None,**kwargs_file):
-    """
-    Return survey file name.
-
-    survey_dir : string
-        Survey directory.
-
-    filetype : string
-        Type of file to find.
-
-    brickname : string
-        Brick name.
-
-    kwargs_file : dict
-        Other arguments to file paths (``fileid``, ``rowstart``, ``skipid``).
-    """
-    survey = LegacySurveySim(survey_dir=survey_dir,kwargs_file=kwargs_file)
-    return survey.find_file(filetype,brick=brickname,output=False)
-
-def get_output_file(output_dir,filetype,brickname=None,**kwargs_file):
-    """
-    Return Obiwan output file name.
-
-    output_dir : string
-        Obiwan output directory.
-
-    filetype : string
-        Type of file to find, including:
-        `obiwan-randoms` -- Obiwan catalogues
-        `obiwan-metadata` -- Obiwan metadata
-        `tractor` -- Tractor catalogs
-        `depth`   -- PSF depth maps
-        `galdepth` -- Canonical galaxy depth maps
-        `nexp` -- number-of-exposure maps.
-
-    brickname : string
-        Brick name.
-
-    kwargs_file : dict
-        Other arguments to file paths (``fileid``, ``rowstart``, ``skipid``).
-    """
-    survey = LegacySurveySim(output_dir=output_dir,kwargs_file=kwargs_file)
-    return survey.find_file(filetype,brick=brickname,output=True)
+def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode='w', **kwargs):
+    """Set up logging, legacypipe style."""
+    # Cannot provide stream and filename kwargs at the same time to logging.basicConfig, so handle different cases
+    # Thanks to https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
+    for handler in logging.root.handlers:
+        logging.root.removeHandler(handler)
+    if filename is not None:
+        stream = None
+        mkdir(os.path.dirname(filename))
+        kwargs = {**{'filename':filename,'filemode':filemode},**kwargs}
+    else:
+        kwargs = {**{'stream':stream},**kwargs}
+    logging.basicConfig(level=level,format='%(message)s',**kwargs)
 
 def saveplot(giveax=True):
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(ax=None,fn=None,kwargs_fig={},**kwargs):
+        def wrapper(ax=None, fn=None, kwargs_fig={}, **kwargs):
             isax = True
             if giveax:
                 if ax is None:
@@ -82,7 +47,7 @@ def saveplot(giveax=True):
         return wrapper
     return decorator
 
-def savefig(fn,bbox_inches='tight',pad_inches=0.1,dpi=200,**kwargs):
+def savefig(fn, bbox_inches='tight', pad_inches=0.1, dpi=200, **kwargs):
     """Save matplotlib figure to ``fn``."""
     mkdir(os.path.dirname(fn))
     logger.info('Saving figure to %s.' % fn)
@@ -125,14 +90,7 @@ def get_git_version(dirnm=None):
     version = version.strip()
     return version
 
-def dict_default(self,other):
-    """Update other with ``self`` and return the result."""
-    toret = {}
-    toret.update(other)
-    toret.update(self)
-    return toret
-
-def get_parser_args(parser,exclude=['help']):
+def get_parser_args(parser, exclude=['help']):
     """
     Return parser list of ``dest``.
 
@@ -151,7 +109,7 @@ def get_parser_args(parser,exclude=['help']):
     """
     return [act.dest for act in parser._actions if act.dest not in exclude]
 
-def sample_ra_dec(size=None,radecbox=[0.,360.,-90.,90.],rng=None,seed=None):
+def sample_ra_dec(size=None, radecbox=[0.,360.,-90.,90.], rng=None, seed=None):
     """
     Sample uniform ra, dec coordinates in ``radecbox``.
 
@@ -194,7 +152,7 @@ def sample_ra_dec(size=None,radecbox=[0.,360.,-90.,90.],rng=None,seed=None):
 
     return ra, dec
 
-def match_radec(ra1,dec1,ra2,dec2,radius_in_degree=None,return_distance=False,notself=False,nearest=True):
+def match_radec(ra1, dec1, ra2, dec2, radius_in_degree=None, return_distance=False, notself=False, nearest=True):
     """
     Match ra2,dec2 to ra1,dec1.
 
@@ -282,7 +240,7 @@ def mask_collisions(ra, dec, radius_in_degree=5./3600.):
         mask[skip] = True
     return mask
 
-def get_radecbox_area(ramin,ramax,decmin,decmax):
+def get_radecbox_area(ramin, ramax, decmin, decmax):
     """
     Return area of ra, dec box.
 
@@ -329,10 +287,11 @@ def get_shape_e(ba):
     References
     ----------
     https://www.legacysurvey.org/dr8/catalogs/
+    Warning! Corresponds to g in: https://galsim-developers.github.io/GalSim/_build/html/shear.html#
     """
     return (1.-ba)/(1.+ba)
 
-def get_shape_e1_e2(ba,phi):
+def get_shape_e1_e2(ba, phi):
     """
     Return ellipticities e1, e2 given minor-to-major axis ratio ``ba`` and angle ``phi``.
 
@@ -379,7 +338,7 @@ def get_shape_ba(e):
     """
     return (1.-np.abs(e))/(1.+np.abs(e))
 
-def get_shape_ba_phi(e1,e2):
+def get_shape_ba_phi(e1, e2):
     """
     Return minor-to-major axis ratio ``ba`` and angle ``phi`` given ellipticities ``e1``, ``e2``.
 
@@ -407,7 +366,7 @@ def get_shape_ba_phi(e1,e2):
     phi = 0.5*np.arctan2(e2,e1) % (2.*np.pi)
     return ba, phi
 
-def get_extinction(ra,dec,band=None,camera='DES'):
+def get_extinction(ra, dec, band=None, camera='DES'):
     """
     Return SFD extinction given ``ra``, ``dec``, ``band`` and ``camera``.
 
@@ -438,11 +397,16 @@ def get_extinction(ra,dec,band=None,camera='DES'):
         c = 1
     else:
         c = sfd.extinctions['%s %s' % (camera,band)]
-    return c*sfd.ebv(ra, dec)
+    isscalar = np.isscalar(ra)
+    ra,dec = np.asarray(ra),np.asarray(dec)
+    toret = c*sfd.ebv(ra, dec)
+    if isscalar:
+        return toret[0]
+    return toret
 
 def mag2nano(mag):
     """Magnitudes to nanomaggies conversion."""
-    return 10. ** ((mag - 22.5) / -2.5)
+    return 10. ** ((np.asarray(mag) - 22.5) / -2.5)
 
 def nano2mag(nano):
     """Nanomaggies to magnitudes conversion."""

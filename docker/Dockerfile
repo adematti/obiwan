@@ -1,4 +1,4 @@
-FROM legacysurvey/legacypipe:DR9.6.5b
+FROM legacysurvey/legacypipe:DR9.6.7
 
 WORKDIR /src/
 
@@ -43,15 +43,17 @@ RUN git clone https://github.com/desihub/desiutil.git desiutil \
 
 RUN rm -rf /src/legacypipe/py/obiwan
 
+# DUST maps
+RUN mkdir -p dust/maps \
+  && cd dust/maps \
+  && wget -c https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_ngp.fits \
+  && wget -c https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_sgp.fits
+ENV DUST_DIR=/src/dust
+
 COPY . /src/obiwan
 ENV PYTHONPATH /src/obiwan/py:${PYTHONPATH}
 
 #RUN cd /src/obiwan/ \
 #  && python3 setup.py install --home=/usr/local
 
-# DUST maps
-RUN mkdir -p dust/maps \
-  && cd dust/maps \
-  && wget -cnv https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_ngp.fits \
-  && wget -cnv https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_sgp.fits
-ENV DUST_DIR=/src/dust
+WORKDIR /homedir/

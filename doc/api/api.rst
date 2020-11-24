@@ -30,3 +30,9 @@ obiwan.scripts module
 .. automodule:: obiwan.scripts
   :members: match_tractor_obiwan
   :show-inheritance:
+
+obiwan.batch module
+------------------------
+.. automodule:: obiwan.batch
+  :members: task_manager
+  :show-inheritance:

@@ -1,6 +1,7 @@
-Post-processing
-###############
+.. _user-post-processing:
 
-The script `obiwan.scripts.match_tractor_obiwan` can be used to match random inputs
-to **Tractor** outputs and draw the corresponding scatter plot, as examplified in
-`postprocess.py <https://github.com/adematti/obiwan/bin/postprocess.py>`_.
+Post-processing
+===============
+
+The script :pyobiwan:`scripts/match_tractor_obiwan.py` can be used to match random inputs
+to **Tractor** outputs and draw the corresponding scatter plot, as examplified in :root:`bin/postprocess.py`.

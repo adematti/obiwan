@@ -8,10 +8,15 @@ from obiwan.utils import *
 setup_logging(logging.DEBUG)
 
 def test_paths():
-    fn = get_survey_file('tests','bricks',brickname='2599p187',fileid=0,rowstart=0,skipid=0)
+    from obiwan.kenobi import find_file,find_survey_file,find_output_file
+    fn = find_survey_file('tests','bricks',brickname='2599p187',fileid=0,rowstart=0,skipid=0)
     assert os.path.normpath(fn) == os.path.normpath('tests/survey-bricks.fits.gz')
-    fn = get_output_file('.','obiwan-randoms',brickname='2599p187',fileid=1,rowstart=2,skipid=3)
+    fn2 = find_file('tests','bricks',brickname='2599p187',output=False,fileid=0,rowstart=0,skipid=0)
+    assert fn2==fn
+    fn = find_output_file('.','randoms',brickname='2599p187',fileid=1,rowstart=2,skipid=3)
     assert os.path.normpath(fn) == os.path.normpath('./obiwan/259/2599p187/file1_rs2_skip3/randoms-2599p187.fits')
+    fn2 = find_file('.','randoms',brickname='2599p187',output=True,fileid=1,rowstart=2,skipid=3)
+    assert fn2==fn
 
 def test_plots():
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -21,9 +26,7 @@ def test_plots():
         plot(fn=os.path.join(tmp_dir,'plot.png'))
 
 def test_misc():
-    d1 = {'a':1}
-    d2 = {'a':2,'b':2}
-    assert dict_default(d1,d2) == {'a':1,'b':2}
+
     parent = argparse.ArgumentParser(add_help=True)
     parent.add_argument('--apodize', default=False, action='store_true',
     					help='Apodize image edges for prettier pictures?')
@@ -37,6 +40,21 @@ def test_misc():
     group.add_argument('--sim-blobs', action='store_true',
     					help='Process only the blobs that contain simulated sources.')
     assert get_parser_args(group) == ['apodize','run','force','sim_blobs']
+    """
+    # Works but file not created in pytest...
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        tmp_file = os.path.join(tmp_dir,'log.out')
+        setup_logging(logging.INFO,filename=tmp_file)
+        words = 'TESTOBIWAN'
+        logger.info(words)
+        ok = False
+        with open(tmp_file,'r') as tmp:
+            for line in tmp.readlines():
+                if words in line:
+                    ok = True
+                    break
+        assert ok
+    """
 
 def test_radec():
     ramin,ramax,decmin,decmax = 259.9,260.2,18.7,18.8
@@ -69,3 +87,10 @@ def test_quantities():
     nano = mag2nano(mag)
     mag_ = nano2mag(nano)
     assert np.allclose(mag,mag_)
+    ra,dec = 12,4
+    ebvref = get_extinction(ra,dec)
+    assert np.isscalar(ebvref) and np.allclose(ebvref,0.01896500348082133)
+    ebv = get_extinction([ra]*4,[dec]*4)
+    assert (ebv.size==4) and np.allclose(ebv,ebvref)
+    trans_g = get_extinction(ra,dec,band='g',camera='DES')
+    assert (ebv.size==4) and np.allclose(trans_g,3.214*ebv)

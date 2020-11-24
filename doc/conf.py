@@ -40,7 +40,7 @@ author = 'Hui Kong, Kaylan Burleigh, John Moustakas, Arnaud de Mattia'
 
 # The full version, including alpha/beta/rc tags
 sys.path.insert(0, os.path.abspath('../py/obiwan'))
-from version import __version__
+from version import __version__,__docker_image__
 release = __version__
 
 html_theme = 'sphinx_rtd_theme'
@@ -65,7 +65,33 @@ exclude_patterns = ['build', '**.ipynb_checkpoints']
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ['static']
 
+git_repo = 'https://github.com/adematti/obiwan.git'
+git_root = 'https://github.com/adematti/obiwan/blob/master/'
+docker_root = 'https://hub.docker.com/r/adematti/obiwan/'
+legacysurvey_root = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/'
+
+extlinks = {'root': (git_root + '%s',''),
+            'pyobiwan': (git_root + 'py/obiwan/%s',''),
+            'dockerroot': (docker_root + '%s',''),
+            'legacypipe': ('https://github.com/legacysurvey/legacypipe/blob/master/','legacypipe')}
 
 intersphinx_mapping = {
     'numpy': ('https://docs.scipy.org/doc/numpy/', None)
 }
+
+# thanks to: https://github.com/sphinx-doc/sphinx/issues/4054#issuecomment-329097229
+def _replace(app, docname, source):
+    result = source[0]
+    for key in app.config.ultimate_replacements:
+        result = result.replace(key, app.config.ultimate_replacements[key])
+    source[0] = result
+
+ultimate_replacements = {
+    '{dockerimage}' : __docker_image__,
+    '{legacysurveyroot}' : legacysurvey_root,
+    '{gitrepo}' : git_repo
+}
+
+def setup(app):
+    app.add_config_value('ultimate_replacements', {}, True)
+    app.connect('source-read',_replace)

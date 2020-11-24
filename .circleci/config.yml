@@ -2,7 +2,7 @@ version: 2.1
 jobs:
   build-from-docker:
     docker:
-      - image: adematti/obiwan:dr9.3
+      - image: adematti/obiwan:DR9.6.7
     steps:
       - run:
           name: CPU info
@@ -13,7 +13,7 @@ jobs:
           command: |
               cd py
               export PYTHONPATH=${PYTHONPATH}:$(pwd)
-              coverage run tests/test_runbrick.py
+              coverage run tests/test_runbrick_legacypipe.py
               coverage run -a -m pytest tests/
 
 workflows:

@@ -6,7 +6,7 @@ import settings
 
 logger = logging.getLogger('preprocessing')
 
-def isELG_colors(gflux=None,rflux=None,zflux=None,south=True,gmarg=0.,grmarg=0.,rzmarg=0.,primary=None):
+def isELG_colors(gflux=None, rflux=None, zflux=None, south=True, gmarg=0., grmarg=0., rzmarg=0., primary=None):
     """
     Apply ELG selection with box enlarged by ``gmarg``, ``grmarg``, ``rzmarg``.
 
@@ -39,7 +39,7 @@ def isELG_colors(gflux=None,rflux=None,zflux=None,south=True,gmarg=0.,grmarg=0.,
 
     return elg
 
-def get_truth(truth_fn,south=True):
+def get_truth(truth_fn, south=True):
     """Build truth table."""
     truth = SimCatalog(truth_fn)
     mask = isELG_colors(south=south,gmarg=0.5,grmarg=0.5,rzmarg=0.5,**{'%sflux' % b:utils.mag2nano(truth.get(b)) for b in ['g','r','z']})
@@ -54,7 +54,7 @@ def get_truth(truth_fn,south=True):
 
     return truth
 
-def sample_from_truth(randoms,truth,rng=None,seed=None):
+def sample_from_truth(randoms, truth, rng=None, seed=None):
     """Sample random photometry from truth table."""
     if rng is None:
         rng = np.random.RandomState(seed=seed)
@@ -77,7 +77,7 @@ def sample_from_truth(randoms,truth,rng=None,seed=None):
 
     return randoms
 
-def write_randoms(truth_fn,randoms_fn,bricknames=[],density=1e3,seed=None,gen_in_brick=True):
+def write_randoms(truth_fn, randoms_fn, bricknames=[], density=1e3, seed=None, gen_in_brick=True):
     """Build Obiwan randoms from scratch and truth table."""
     rng = np.random.RandomState(seed=seed)
     bricks = BrickCatalog()
@@ -111,7 +111,7 @@ def write_randoms(truth_fn,randoms_fn,bricknames=[],density=1e3,seed=None,gen_in
 
     randoms.writeto(randoms_fn)
 
-def write_legacysurvey_randoms(input_fn,truth_fn,randoms_fn,bricknames=[],seed=None):
+def write_legacysurvey_randoms(input_fn, truth_fn, randoms_fn, bricknames=[], seed=None):
     """Build Obiwan randoms from legacysurvey randoms and truth table."""
     randoms = SimCatalog(input_fn)
     logger.info('Selecting randoms in %s' % bricknames)
@@ -125,7 +125,7 @@ def write_legacysurvey_randoms(input_fn,truth_fn,randoms_fn,bricknames=[],seed=N
         truth = get_truth(truth_fn,south=photsys=='S')
         mask = randoms.photsys == photsys
         if mask.any():
-            randoms.merge(sample_from_truth(randoms[mask],truth,seed=seed),index_self=mask,index_other=mask)
+            randoms.fill(sample_from_truth(randoms[mask],truth,seed=seed),index_self=mask,index_other=None)
 
     randoms.writeto(randoms_fn)
 
@@ -135,13 +135,13 @@ if __name__ == '__main__':
     setup_logging()
 
     parser = argparse.ArgumentParser(description='Obiwan preprocessing')
-    parser.add_argument('-d','--do',nargs='*',type=str,choices=['listbrick','randoms'],default=[],required=False,help='What should I do')
+    parser.add_argument('-d','--do',nargs='*',type=str,choices=['bricklist','randoms'],default=[],required=False,help='What should I do')
     opt = parser.parse_args()
 
-    if 'listbrick' in opt.do:
+    if 'bricklist' in opt.do:
         bricks = BrickCatalog(settings.survey_dir)
         bricks.write_list(settings.bricklist_fn)
 
     if 'randoms' in opt.do:
-        #write_randoms(settings.truth_fn,settings.randoms_fn,bricknames=settings.bricknames,seed=42,gen_in_brick=False)
-        write_legacysurvey_randoms(settings.randoms_input_fn,settings.truth_fn,settings.randoms_fn,bricknames=settings.bricknames,seed=42)
+        #write_randoms(settings.truth_fn,settings.randoms_fn,bricknames=settings.get_bricknames(),seed=42,gen_in_brick=False)
+        write_legacysurvey_randoms(settings.randoms_input_fn,settings.truth_fn,settings.randoms_fn,bricknames=settings.get_bricknames(),seed=42)

@@ -3,6 +3,7 @@
 import os
 import sys
 import logging
+import numpy as np
 from legacypipe import runbrick
 from legacypipe.utils import RunbrickError, NothingToDoError
 from obiwan import SimCatalog,utils
@@ -28,9 +29,11 @@ def get_parser():
     e.g., to run a small field containing a cluster:
 python -u obiwan/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 950 -P pickles/runbrick-cluster-%%s.pickle"""
     parser = argparse.ArgumentParser(description=de,epilog=ep,add_help=False,parents=[runbrick.get_parser()])
+
     args_runbrick = utils.get_parser_args(parser,exclude=['verbose','help'])
-    #Obiwan arguments
+    # Obiwan arguments
     group = parser.add_argument_group('Obiwan', 'Obiwan-specific arguments')
+    parser.add_argument('--log-fn', type=str, default=None, help='Log to given filename instead of stdout')
     group.add_argument('--subset', type=int, default=0,
                         help='COSMOS subset number [0 to 4, 10 to 12], only used if --run cosmos')
     group.add_argument('--ran-fn', default=None, help='Randoms filename; if not provided, run equivalent to legacypipe.runbrick')
@@ -44,14 +47,14 @@ python -u obiwan/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 950 -
     group.add_argument('--col-radius', type=float, default=5., help='Collision radius in arcseconds, used to define collided simulated objects.\
                         Ignore if negative')
     group.add_argument('--sim-stamp', type=str, choices=['tractor','galsim'], default='tractor', help='Method to simulate objects')
-    group.add_argument('--add-sim-noise', action="store_true", default=False, help='Add noise to simulated sources?')
+    group.add_argument('--add-sim-noise', type=str, choices=['gaussian','poisson'], default=False, help='Add noise from the simulated source to the image.')
     group.add_argument('--image-eq-model', action="store_true", default=False, help='Set image ivar by model only (ignore real image ivar)?')
     group.add_argument('--sim-blobs', action='store_true', default=False,
                         help='Process only the blobs that contain simulated sources')
     group.add_argument('--seed', type=int, default=None, help='Random seed to add noise to injected sources of ran-fn.')
     return parser,args_runbrick
 
-def get_runbrick_kwargs(args_runbrick,**opt):
+def get_runbrick_kwargs(args_runbrick, **opt):
     """
     Convert ``obiwan.runbrick`` command line options into ``survey`` and ``**kwargs`` for ``run_brick()``.
 
@@ -76,7 +79,8 @@ def get_runbrick_kwargs(args_runbrick,**opt):
             run_brick(brickname, survey, **kwargs)
 
     """
-    opt['kwargs_file'] = {key:opt[key] for key in ['fileid','rowstart','skipid']}
+    from obiwan.kenobi import get_randoms_id
+    opt['kwargs_file'] = {key:opt[key] for key in get_randoms_id.keys()}
 
     kwargs_survey = {key:opt[key] for key in \
                           ['sim_stamp','add_sim_noise','image_eq_model','seed','kwargs_file',
@@ -116,7 +120,7 @@ def run_brick(opt, survey, **kwargs):
         return
 
     if opt.skipid>0:
-        filename = survey.find_file('obiwan-randoms',output=True)
+        filename = survey.find_file('randoms',output=True)
         simcat = SimCatalog(filename)
         simcat.cut(simcat.collided)
     else:
@@ -146,13 +150,13 @@ def run_brick(opt, survey, **kwargs):
 
     if opt.sim_blobs:
         logger.info('Fitting blobs of input catalog.')
-        blobxy = zip(survey.simcat.bx,survey.simcat.by)
-        kwargs.update(blobxy=blobxy)
+        blobradec = np.array([survey.simcat.ra,survey.simcat.dec]).T
+        kwargs.update(blobradec=blobradec)
 
     runbrick.run_brick(opt.brick, survey, **kwargs)
     simcat[mask_simcat] = survey.simcat
 
-    ran_fn = survey.find_file('obiwan-randoms',brick=opt.brick,output=True)
+    ran_fn = survey.find_file('randoms',brick=opt.brick,output=True)
     simcat.writeto(ran_fn,header=vars(opt))
 
 
@@ -160,20 +164,16 @@ def main(args=None):
     """
     Main routine which parses the optional inputs.
 
-    Simple copy-paste from ``legacypipe.runbrick.main()``, simply changing::
+    Simple copy-paste from ``legacypipe.runbrick.main()``, main changes::
 
         parser = get_parser()
-        logging.basicConfig(level=lvl, format='%(message)s', stream=sys.stdout)
         survey, kwargs = get_runbrick_kwargs(**optdict)
-        debug('kwargs:', kwargs)
         run_brick(opt.brick, survey, **kwargs)
 
     to::
 
         parser, args_runbrick = get_parser()
-        setup_logging(lvl)
         survey, kwargs = get_runbrick_kwargs(args_runbrick,**optdict)
-        logger.debug('kwargs: %s' % kwargs)
         run_brick(opt, survey, **kwargs)
 
     Parameters
@@ -181,21 +181,12 @@ def main(args=None):
     args : list, default=None
         To overload command line arguments.
     """
-    import datetime
-    from legacypipe.survey import get_git_version
-
-    print()
-    print('runbrick.py starting at', datetime.datetime.now().isoformat())
-    print('legacypipe git version:', get_git_version())
+    setup_logging(logging.INFO)
     if args is None:
-        print('Command-line args:', sys.argv)
-        cmd = 'python'
-        for vv in sys.argv:
-            cmd += ' {}'.format(vv)
-        print(cmd)
+        logger.info('command-line args: %s' % sys.argv)
     else:
-        print('Args:', args)
-    print()
+        args = list(map(str,args))
+        logger.info('args: %s' % args)
 
     parser, args_runbrick = get_parser()
     parser.add_argument(
@@ -204,15 +195,24 @@ def main(args=None):
         '--ps-t0', type=int, default=0, help='Unix-time start for "--ps"')
 
     opt = parser.parse_args(args=args)
+    optdict = vars(opt)
+    ps_fn = optdict.pop('ps', None)
+    ps_t0   = optdict.pop('ps_t0', 0)
+    verbose = optdict.pop('verbose')
+    log_fn  = optdict.pop('log_fn')
+
+    if verbose == 0:
+        lvl = logging.INFO
+    else:
+        lvl = logging.DEBUG
+
+    setup_logging(lvl,filename=log_fn)
+    # tractor logging is *soooo* chatty
+    logging.getLogger('tractor.engine').setLevel(lvl + 10)
 
     if opt.brick is None and opt.radec is None:
         parser.print_help()
         return -1
-
-    optdict = vars(opt)
-    ps_file = optdict.pop('ps', None)
-    ps_t0   = optdict.pop('ps_t0', 0)
-    verbose = optdict.pop('verbose')
 
     survey, kwargs = get_runbrick_kwargs(args_runbrick,**optdict)
 
@@ -220,15 +220,9 @@ def main(args=None):
         return kwargs
     kwargs.update(command_line=' '.join(sys.argv))
 
-    if verbose == 0:
-        lvl = logging.INFO
-    else:
-        lvl = logging.DEBUG
-    setup_logging(lvl)
-    # tractor logging is *soooo* chatty
-    logging.getLogger('tractor.engine').setLevel(lvl + 10)
-
     if opt.plots:
+        if opt.plot_base is not None:
+            utils.mkdir(os.path.dirname(opt.plot_base))
         import matplotlib
         matplotlib.use('Agg')
         import pylab as plt
@@ -236,7 +230,8 @@ def main(args=None):
         plt.subplots_adjust(left=0.07, right=0.99, bottom=0.07, top=0.93,
                             hspace=0.2, wspace=0.05)
 
-    if ps_file is not None:
+    if ps_fn is not None:
+        utils.mkdir(os.path.dirname(ps_fn))
         import threading
         from collections import deque
         from legacypipe.utils import run_ps_thread
@@ -251,10 +246,10 @@ def main(args=None):
 
         ps_thread = threading.Thread(
             target=run_ps_thread,
-            args=(os.getpid(), os.getppid(), ps_file, ps_shutdown, ps_queue),
+            args=(os.getpid(), os.getppid(), ps_fn, ps_shutdown, ps_queue),
             name='run_ps')
         ps_thread.daemon = True
-        print('Starting thread to run "ps"')
+        logger.info('Starting thread to run "ps"')
         ps_thread.start()
 
     logger.debug('kwargs: %s' % kwargs)
@@ -264,29 +259,25 @@ def main(args=None):
         run_brick(opt, survey, **kwargs)
         rtn = 0
     except NothingToDoError as e:
-        print()
         if hasattr(e, 'message'):
-            print(e.message)
+            logger.info(e.message)
         else:
-            print(e)
-        print()
+            logger.info(e)
         rtn = 0
     except RunbrickError as e:
-        print()
         if hasattr(e, 'message'):
-            print(e.message)
+            logger.info(e.message)
         else:
-            print(e)
-        print()
+            logger.info(e)
         rtn = -1
 
-    if ps_file is not None:
+    if ps_fn is not None:
         # Try to shut down ps thread gracefully
         ps_shutdown.set()
-        print('Attempting to join the ps thread...')
+        logger.info('Attempting to join the ps thread...')
         ps_thread.join(1.0)
         if ps_thread.isAlive():
-            print('ps thread is still alive.')
+            logger.info('ps thread is still alive.')
 
     return rtn
 
@@ -296,7 +287,8 @@ if __name__ == '__main__':
     from astrometry.util.ttime import Time,CpuMeas,MemMeas
     Time.add_measurement(CpuMeas)
     Time.add_measurement(MemMeas)
-    import time as time_builtin
-    logger.info('runbrick.py started at %s' % time_builtin.strftime("%Y-%m-%d %H:%M:%S"))
+    import time
+    setup_logging(logging.INFO)
+    logger.info('runbrick.py started at %s' % time.strftime("%Y-%m-%d %H:%M:%S"))
     main()
-    logger.info('runbrick.py finished at %s' % time_builtin.strftime("%Y-%m-%d %H:%M:%S"))
+    logger.info('runbrick.py finished at %s' % time.strftime("%Y-%m-%d %H:%M:%S"))

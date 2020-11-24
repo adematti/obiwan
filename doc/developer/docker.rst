@@ -1,5 +1,5 @@
 Building the Docker image
-#########################
+=========================
 
 First create an account ``youraccount`` at `<https://hub.docker.com>`_.
 

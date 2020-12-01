@@ -181,7 +181,7 @@ def main(args=None):
     args : list, default=None
         To overload command line arguments.
     """
-    setup_logging(logging.INFO)
+    setup_logging('info')
     if args is None:
         logger.info('command-line args: %s' % sys.argv)
     else:
@@ -202,13 +202,13 @@ def main(args=None):
     log_fn  = optdict.pop('log_fn')
 
     if verbose == 0:
-        lvl = logging.INFO
+        level = 'info'
     else:
-        lvl = logging.DEBUG
+        level = 'debug'
 
-    setup_logging(lvl,filename=log_fn)
+    setup_logging(level,filename=log_fn)
     # tractor logging is *soooo* chatty
-    logging.getLogger('tractor.engine').setLevel(lvl + 10)
+    logging.getLogger('tractor.engine').setLevel(logging.WARNING)
 
     if opt.brick is None and opt.radec is None:
         parser.print_help()
@@ -254,22 +254,22 @@ def main(args=None):
 
     logger.debug('kwargs: %s' % kwargs)
 
-    rtn = -1
+    toret = -1
     try:
         run_brick(opt, survey, **kwargs)
-        rtn = 0
+        toret = 0
     except NothingToDoError as e:
         if hasattr(e, 'message'):
             logger.info(e.message)
         else:
             logger.info(e)
-        rtn = 0
+        toret = 0
     except RunbrickError as e:
         if hasattr(e, 'message'):
             logger.info(e.message)
         else:
             logger.info(e)
-        rtn = -1
+        toret = -1
 
     if ps_fn is not None:
         # Try to shut down ps thread gracefully
@@ -279,7 +279,7 @@ def main(args=None):
         if ps_thread.isAlive():
             logger.info('ps thread is still alive.')
 
-    return rtn
+    return toret
 
 
 if __name__ == '__main__':
@@ -288,7 +288,7 @@ if __name__ == '__main__':
     Time.add_measurement(CpuMeas)
     Time.add_measurement(MemMeas)
     import time
-    setup_logging(logging.INFO)
+    setup_logging('info')
     logger.info('runbrick.py started at %s' % time.strftime("%Y-%m-%d %H:%M:%S"))
     main()
     logger.info('runbrick.py finished at %s' % time.strftime("%Y-%m-%d %H:%M:%S"))

@@ -11,7 +11,11 @@ with TaskManager(ntasks=ntasks) as tm:
 
     for brick in tm.iterate(settings.get_bricknames()):
 
-        output = run_shell(['./runbrick.sh','--brick',brick,'--threads',threads,'--outdir',settings.output_dir,'--run',settings.run,
+        command = ['./runbrick.sh','--brick',brick,'--threads',threads,'--outdir',settings.output_dir,'--run',settings.run,
                         '--ran-fn',settings.randoms_fn,'--fileid',settings.fileid,'--rowstart',settings.rowstart,
-                        '--skipid',settings.skipid,'--sim-blobs','--sim-stamp','tractor','--no-wise'])
-        print(output)
+                        '--skipid',settings.skipid,'--sim-blobs','--sim-stamp','tractor','--no-wise']
+
+        print('Launching ' + ' '.join(map(str,command)))
+
+        output = run_shell(command)
+        print('Output: ' + output)

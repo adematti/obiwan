@@ -85,7 +85,6 @@ mkdir -p "${logfn%/*}"
 psfn="${outdir}/metrics/${bri}/${brick}/${rsname}/ps-${brick}.fits"
 mkdir -p "${psfn%/*}"
 
-#log=''
 echo "Logging to: $logfn"
 echo "Running on $(hostname)"
 

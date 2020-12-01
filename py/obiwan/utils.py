@@ -14,15 +14,19 @@ def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode
     """Set up logging, legacypipe style."""
     # Cannot provide stream and filename kwargs at the same time to logging.basicConfig, so handle different cases
     # Thanks to https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
+    if isinstance(level,str):
+        level = {'info':logging.INFO,'debug':logging.DEBUG,'warning':logging.WARNING}[level]
     for handler in logging.root.handlers:
         logging.root.removeHandler(handler)
+    fmt = logging.Formatter(fmt='%(asctime)s %(name)-15s %(levelname)-8s %(message)s',datefmt='%m-%d %H:%M ')
     if filename is not None:
         stream = None
         mkdir(os.path.dirname(filename))
-        kwargs = {**{'filename':filename,'filemode':filemode},**kwargs}
+        handler = logging.FileHandler(filename,mode=filemode)
     else:
-        kwargs = {**{'stream':stream},**kwargs}
-    logging.basicConfig(level=level,format='%(message)s',**kwargs)
+        handler = logging.StreamHandler()
+    handler.setFormatter(fmt)
+    logging.basicConfig(level=level,handlers=[handler],**kwargs)
 
 def saveplot(giveax=True):
     def decorator(func):

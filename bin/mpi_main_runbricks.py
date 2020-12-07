@@ -20,7 +20,7 @@ with TaskManager(ntasks=ntasks) as tm:
 
         command = ['--brick',brick,'--threads',threads,'--outdir',settings.output_dir,'--run',settings.run,
                         '--ran-fn',settings.randoms_fn,'--fileid',settings.fileid,'--rowstart',settings.rowstart,
-                        '--skipid',settings.skipid,'--sim-blobs','--sim-stamp','tractor','--no-wise',
+                        '--skipid',settings.skipid,'--sim-blobs','--sim-stamp','tractor','--no-wise','--no-write',
                         #'--log-fn',log_fn,'--ps',ps_fn,'--ps-t0',int(time.time())]
                         '--ps',ps_fn,'--ps-t0',int(time.time())]
 

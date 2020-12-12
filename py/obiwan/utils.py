@@ -31,16 +31,16 @@ def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode
 def saveplot(giveax=True):
     def decorator(func):
         @functools.wraps(func)
-        def wrapper(ax=None, fn=None, kwargs_fig={}, **kwargs):
+        def wrapper(self,ax=None,fn=None,kwargs_fig={},**kwargs):
             isax = True
             if giveax:
                 if ax is None:
                     isax = False
                     ax = plt.gca()
-                func(ax,**kwargs)
+                func(self,ax,**kwargs)
             else:
                 isax = False
-                func(**kwargs)
+                func(self,**kwargs)
                 if ax is None:
                     ax = plt.gca()
             if fn is not None:
@@ -94,7 +94,39 @@ def get_git_version(dirnm=None):
     version = version.strip()
     return version
 
-def get_parser_args(parser, exclude=['help']):
+def get_parser_args(args=None):
+    """
+    Transform args (``None``, ``str``, ``list``, ``dict``) to parser-compatible (list of strings) args.
+
+    Parameters
+    ----------
+    args : string, list, dict, default=None
+        Arguments. If dict, '--' are added in front and there should not be positional arguments.
+
+    Returns
+    -------
+    args : None, list of strings.
+        Parser arguments.
+
+    Notes
+    -----
+    All non-strings are converted to strings with ``str``.
+    """
+    if isinstance(args,str):
+        return args.split()
+
+    if isinstance(args,list):
+        return list(map(str,args))
+
+    if isinstance(args,dict):
+        toret = []
+        for key in args:
+            toret += ['--%s' % key, str(args[key])]
+        return toret
+
+    return args
+
+def get_parser_dests(parser, exclude=['help']):
     """
     Return parser list of ``dest``.
 
@@ -414,4 +446,44 @@ def mag2nano(mag):
 
 def nano2mag(nano):
     """Nanomaggies to magnitudes conversion."""
-    return -2.5 * (np.log10(nano) - 9)
+    return 22.5 - 2.5 * np.log10(nano)
+
+def match_id(id1,id2):
+    """
+    Match id2 to id1.
+
+    Parameters
+    ----------
+    id1 : array-like
+        IDs 1, should be unique.
+
+    id2 : array-like
+        IDs 2, should be unique.
+
+    Returns
+    -------
+    index1 : ndarray
+        Indices of matching ``id1``.
+
+    index2 : ndarray
+        Indices of matching ``id2``.
+
+    Warning
+    -------
+    Makes sense only if ``id1`` and ``id2`` elements are unique.
+
+    References
+    ----------
+    https://www.followthesheep.com/?p=1366
+    """
+    sort1 = np.argsort(id1)
+    sort2 = np.argsort(id2)
+    sortleft1 = id1[sort1].searchsorted(id2[sort2],side='left')
+    sortright1 = id1[sort1].searchsorted(id2[sort2],side='right')
+    sortleft2 = id2[sort2].searchsorted(id1[sort1],side='left')
+    sortright2 = id2[sort2].searchsorted(id1[sort1],side='right')
+
+    ind2 = np.flatnonzero(sortright1-sortleft1 > 0)
+    ind1 = np.flatnonzero(sortright2-sortleft2 > 0)
+
+    return sort1[ind1],sort2[ind2]

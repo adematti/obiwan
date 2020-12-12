@@ -6,8 +6,7 @@ import logging
 import numpy as np
 from legacypipe import runbrick
 from legacypipe.utils import RunbrickError, NothingToDoError
-from obiwan import SimCatalog,utils
-from obiwan.utils import setup_logging
+from obiwan import SimCatalog,utils,setup_logging
 
 logger = logging.getLogger('obiwan.runbrick')
 
@@ -30,7 +29,7 @@ def get_parser():
 python -u obiwan/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 950 -P pickles/runbrick-cluster-%%s.pickle"""
     parser = argparse.ArgumentParser(description=de,epilog=ep,add_help=False,parents=[runbrick.get_parser()])
 
-    args_runbrick = utils.get_parser_args(parser,exclude=['verbose','help'])
+    args_runbrick = utils.get_parser_dests(parser,exclude=['verbose','help'])
     # Obiwan arguments
     group = parser.add_argument_group('Obiwan', 'Obiwan-specific arguments')
     parser.add_argument('--log-fn', type=str, default=None, help='Log to given filename instead of stdout')
@@ -39,19 +38,19 @@ python -u obiwan/runbrick.py --plots --brick 2440p070 --zoom 1900 2400 450 950 -
     group.add_argument('--ran-fn', default=None, help='Randoms filename; if not provided, run equivalent to legacypipe.runbrick')
     group.add_argument('--fileid', type=int, default=0, help='Index of ran-fn')
     group.add_argument('--rowstart', type=int, default=0,
-                        help='Zero indexed, row of ran-fn, after it is cut to brick, to start on')
+                        help='Zero indexed, row of ran-fn, after it is cut to brick, to start from')
     group.add_argument('--nobj', type=int, default=-1,
                         help='Number of objects to inject in the given brick; if -1, all objects in ran-fn are added')
     group.add_argument('--skipid', type=int, default=0, help='Inject collided objects from ran-fn of previous skipid-1 run.\
-                       In this case, no cut based on --nobj and --rowstart is applied.')
+                       In this case, no cut based on --nobj and --rowstart is applied')
     group.add_argument('--col-radius', type=float, default=5., help='Collision radius in arcseconds, used to define collided simulated objects.\
                         Ignore if negative')
     group.add_argument('--sim-stamp', type=str, choices=['tractor','galsim'], default='tractor', help='Method to simulate objects')
     group.add_argument('--add-sim-noise', type=str, choices=['gaussian','poisson'], default=False, help='Add noise from the simulated source to the image.')
-    group.add_argument('--image-eq-model', action="store_true", default=False, help='Set image ivar by model only (ignore real image ivar)?')
+    group.add_argument('--image-eq-model', action='store_true', default=False, help='Set image ivar by model only (ignore real image ivar)?')
     group.add_argument('--sim-blobs', action='store_true', default=False,
-                        help='Process only the blobs that contain simulated sources')
-    group.add_argument('--seed', type=int, default=None, help='Random seed to add noise to injected sources of ran-fn.')
+                        help='Process only the blobs that contain injected sources')
+    group.add_argument('--seed', type=int, default=None, help='Random seed to add noise to injected sources of ran-fn')
     return parser,args_runbrick
 
 def get_runbrick_kwargs(args_runbrick, **opt):
@@ -80,7 +79,7 @@ def get_runbrick_kwargs(args_runbrick, **opt):
 
     """
     from obiwan.kenobi import get_randoms_id
-    opt['kwargs_file'] = {key:opt[key] for key in get_randoms_id.keys()}
+    opt['kwargs_file'] = get_randoms_id.as_dict(**opt)
 
     kwargs_survey = {key:opt[key] for key in \
                           ['sim_stamp','add_sim_noise','image_eq_model','seed','kwargs_file',
@@ -113,13 +112,13 @@ def run_brick(opt, survey, **kwargs):
             run_brick(brickname, survey, **kwargs)
 
     """
-    # legacypipe-only run if opt.skipid==0 and random filename not provided
-    if (not (opt.skipid>0)) and (opt.ran_fn is None):
+    # legacypipe-only run if opt.skipid == 0 and random filename not provided
+    if (not (opt.skipid > 0)) and (opt.ran_fn is None):
         survey.simcat = None
         runbrick.run_brick(opt.brick, survey, **kwargs)
         return
 
-    if opt.skipid>0:
+    if opt.skipid > 0:
         filename = survey.find_file('randoms',output=True)
         simcat = SimCatalog(filename)
         simcat.cut(simcat.collided)
@@ -127,12 +126,12 @@ def run_brick(opt, survey, **kwargs):
         simcat = SimCatalog(opt.ran_fn)
         simcat.fill_obiwan(survey=survey)
         simcat.cut(simcat.brickname == opt.brick)
-        if opt.nobj>=0:
+        if opt.nobj >= 0:
             simcat = simcat[opt.rowstart:opt.rowstart+opt.nobj]
             logger.info('Cutting to nobj = %d' % opt.nobj)
     logger.info('SimCatalog size = %d' % len(simcat))
 
-    if opt.col_radius>0.:
+    if opt.col_radius > 0.:
         simcat.collided = simcat.mask_collisions(radius_in_degree=opt.col_radius/3600.)
     else:
         logger.info('Ignore collisions.')
@@ -140,12 +139,14 @@ def run_brick(opt, survey, **kwargs):
     ncollided = simcat.collided.sum()
     mask_simcat = ~simcat.collided
 
-    if ncollided>0:
+    if ncollided > 0:
         logger.info('Found %d collisions! You will have to run runbrick.py with --skipid = %d.' % (ncollided,opt.skipid+1))
 
     survey.simcat = simcat[mask_simcat]
 
     if len(survey.simcat) == 0:
+        # write catalog to ease run checks
+        survey.simcat.writeto(ran_fn,header=vars(opt))
         raise ValueError('Empty SimCatalog, aborting!')
 
     if opt.sim_blobs:
@@ -182,24 +183,24 @@ def main(args=None):
         To overload command line arguments.
     """
     setup_logging('info')
+    args = utils.get_parser_args(args=args)
     if args is None:
         logger.info('command-line args: %s' % sys.argv)
     else:
-        args = list(map(str,args))
         logger.info('args: %s' % args)
 
     parser, args_runbrick = get_parser()
-    parser.add_argument(
-        '--ps', help='Run "ps" and write results to given filename?')
-    parser.add_argument(
-        '--ps-t0', type=int, default=0, help='Unix-time start for "--ps"')
+    parser.add_argument('--ps', nargs='?', type=str, default=False, const=True,
+                        help='Run "ps" and write results to filename. '\
+                        'If filename is not provided, used the default filename (in "metrics")')
+    parser.add_argument('--ps-t0', type=int, default=0, help='Unix-time start for "--ps"')
 
     opt = parser.parse_args(args=args)
     optdict = vars(opt)
-    ps_fn = optdict.pop('ps', None)
-    ps_t0   = optdict.pop('ps_t0', 0)
+    ps_fn = optdict.pop('ps', False)
+    ps_t0 = optdict.pop('ps_t0', 0)
     verbose = optdict.pop('verbose')
-    log_fn  = optdict.pop('log_fn')
+    log_fn = optdict.pop('log_fn')
 
     if verbose == 0:
         level = 'info'
@@ -230,7 +231,8 @@ def main(args=None):
         plt.subplots_adjust(left=0.07, right=0.99, bottom=0.07, top=0.93,
                             hspace=0.2, wspace=0.05)
 
-    if ps_fn is not None:
+    if ps_fn:
+        if not isinstance(ps_fn,str): ps_fn = survey.find_file('ps',brick=opt.brick,output=True)
         utils.mkdir(os.path.dirname(ps_fn))
         import threading
         from collections import deque
@@ -271,7 +273,7 @@ def main(args=None):
             logger.info(e)
         toret = -1
 
-    if ps_fn is not None:
+    if ps_fn:
         # Try to shut down ps thread gracefully
         ps_shutdown.set()
         logger.info('Attempting to join the ps thread...')

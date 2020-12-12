@@ -8,22 +8,22 @@ from obiwan.utils import *
 setup_logging(logging.DEBUG)
 
 def test_paths():
-    from obiwan.kenobi import find_file,find_survey_file,find_output_file
-    fn = find_survey_file('tests','bricks',brickname='2599p187',fileid=0,rowstart=0,skipid=0)
+    from obiwan.kenobi import find_file,find_legacypipe_file,find_obiwan_file
+    fn = find_legacypipe_file('tests','bricks',brickname='2599p187',fileid=0,rowstart=0,skipid=0)
     assert os.path.normpath(fn) == os.path.normpath('tests/survey-bricks.fits.gz')
-    fn2 = find_file('tests','bricks',brickname='2599p187',output=False,fileid=0,rowstart=0,skipid=0)
+    fn2 = find_file('tests','bricks',brickname='2599p187',source='legacypipe',fileid=0,rowstart=0,skipid=0)
     assert fn2==fn
-    fn = find_output_file('.','randoms',brickname='2599p187',fileid=1,rowstart=2,skipid=3)
+    fn = find_obiwan_file('.','randoms',brickname='2599p187',fileid=1,rowstart=2,skipid=3)
     assert os.path.normpath(fn) == os.path.normpath('./obiwan/259/2599p187/file1_rs2_skip3/randoms-2599p187.fits')
-    fn2 = find_file('.','randoms',brickname='2599p187',output=True,fileid=1,rowstart=2,skipid=3)
+    fn2 = find_file('.','randoms',brickname='2599p187',source='obiwan',fileid=1,rowstart=2,skipid=3)
     assert fn2==fn
 
 def test_plots():
     with tempfile.TemporaryDirectory() as tmp_dir:
         @saveplot()
-        def plot(ax,label='label'):
+        def plot(self, ax,label='label'):
             ax.plot(np.linspace(0.,1.,10))
-        plot(fn=os.path.join(tmp_dir,'plot.png'))
+        plot(0,fn=os.path.join(tmp_dir,'plot.png'))
 
 def test_misc():
 
@@ -39,7 +39,7 @@ def test_misc():
     	help="Force re-running the given stage(s) -- don't read from pickle.")
     group.add_argument('--sim-blobs', action='store_true',
     					help='Process only the blobs that contain simulated sources.')
-    assert get_parser_args(group) == ['apodize','run','force','sim_blobs']
+    assert get_parser_dests(group) == ['apodize','run','force','sim_blobs']
     """
     # Works but file not created in pytest...
     with tempfile.TemporaryDirectory() as tmp_dir:
@@ -55,6 +55,19 @@ def test_misc():
                     break
         assert ok
     """
+    truth = ['--a','1','--b','2']
+    args = '--a 1 --b 2'
+    assert get_parser_args(args) == truth
+    args = ['--a',1,'--b',2]
+    assert get_parser_args(args) == truth
+    args = {'a':1,'b':2}
+    assert get_parser_args(args) == truth
+
+    id1 = np.arange(4)
+    id2 = np.array([1,3,2,4,6])
+    ind1,ind2 = match_id(id1,id2)
+    assert len(ind1) == len(ind2) and len(ind1) == 3
+    assert (id1[ind1] == id2[ind2]).all()
 
 def test_radec():
     ramin,ramax,decmin,decmax = 259.9,260.2,18.7,18.8

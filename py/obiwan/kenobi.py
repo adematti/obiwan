@@ -25,6 +25,7 @@ class get_randoms_id(object):
     _keys = ['fileid','rowstart','skipid']
     _defs = [0]*len(_keys)
     _template = 'file%d_rs%d_skip%d'
+    _re_template = re.compile(r"file(?P<fileid>.*?)\_rs(?P<rowstart>.*?)\_skip(?P<skipid>.*?)$")
 
     @classmethod
     def keys(cls):
@@ -47,33 +48,42 @@ class get_randoms_id(object):
         """Return string corresponding to input random catalog."""
         return cls._template % tuple(cls.as_list(**kwargs))
 
-def find_file(base_dir=None, filetype=None, brickname=None, output=False, **kwargs_file):
+    @classmethod
+    def split(cls,string):
+        match = cls._re_template.match(string)
+        return {key: int(match.group(key)) for key in cls.keys()}
+
+def find_file(base_dir=None, filetype=None, brickname=None, source='obiwan', **kwargs):
     """
     Return file name.
 
     Shortcut to ``LegacySurveySim.find_file()``.
 
-    base_dir : string, None
+    base_dir : string, default=None
         Survey (if ``output==False``) or output (if ``output==True``) directory.
 
-    filetype : string, None
+    filetype : string, default=None
         Type of file to find.
 
-    brickname : string, None
+    brickname : string, default=None
         Brick name.
 
-    output : bool, default=False
-        Whether we are about to write this file.
+    source : str, default=`obiwan`
+        If `obiwan`, return an Obiwan output file name, else a legacypipe file name.
 
-    kwargs_file : dict
-        Other arguments to file paths (``get_randoms_id.keys()``).
+    kwargs : dict
+        Other arguments to file paths (e.g. ``get_randoms_id.keys()``).
     """
-    survey = LegacySurveySim(survey_dir=base_dir,output_dir=base_dir,kwargs_file=kwargs_file)
-    return survey.find_file(filetype,brick=brickname,output=output)
+    if source == 'obiwan':
+        survey = LegacySurveySim(survey_dir=base_dir,kwargs_file=get_randoms_id.as_dict(**kwargs))
+    else:
+        survey = LegacySurveyData(survey_dir=base_dir)
+    kwargs = {key:val for key,val in kwargs.items() if key not in get_randoms_id.keys()}
+    return survey.find_file(filetype,brick=brickname,output=False,**kwargs)
 
-def find_survey_file(survey_dir, filetype, brickname=None, **kwargs_file):
+def find_legacypipe_file(survey_dir, filetype, brickname=None, **kwargs):
     """
-    Return survey file name.
+    Return legacypipe file name.
 
     survey_dir : string
         Survey directory.
@@ -84,12 +94,12 @@ def find_survey_file(survey_dir, filetype, brickname=None, **kwargs_file):
     brickname : string
         Brick name.
 
-    kwargs_file : dict
-        Other arguments to file paths (``get_randoms_id.keys()``).
+    kwargs : dict
+        Other arguments to file paths (e.g. ``get_randoms_id.keys()``).
     """
-    return find_file(base_dir=survey_dir,filetype=filetype,brickname=brickname,output=False,**kwargs_file)
+    return find_file(base_dir=survey_dir,filetype=filetype,brickname=brickname,source='legacypipe',**kwargs)
 
-def find_output_file(output_dir, filetype, brickname=None, **kwargs_file):
+def find_obiwan_file(output_dir, filetype, brickname=None, **kwargs):
     """
     Return Obiwan output file name.
 
@@ -102,21 +112,21 @@ def find_output_file(output_dir, filetype, brickname=None, **kwargs_file):
     brickname : string
         Brick name.
 
-    kwargs_file : dict
-        Other arguments to file paths (``get_randoms_id.keys()``).
+    kwargs : dict
+        Other arguments to file paths (e.g. ``get_randoms_id.keys()``).
     """
-    return find_file(base_dir=output_dir,filetype=filetype,brickname=brickname,output=True,**kwargs_file)
+    return find_file(base_dir=output_dir,filetype=filetype,brickname=brickname,source='obiwan',**kwargs)
 
-class LegacySurveySim(LegacySurveyData):
+class BaseSimSurvey(object):
 
-    """Extend ``legacypipe.survey.LegacySurveyData`` with Obiwan attributes."""
+    """Dumb class with Obiwan attributes for future multiple inheritance."""
 
     def __init__(self, *args, simcat=None, sim_stamp='tractor', add_sim_noise=False,
                  image_eq_model=False, seed=0, kwargs_file={}, **kwargs):
         """
-        Instantiate a ``LegacySurveySim`` object.
+        Instantiate a ``BaseSimSurvey`` object.
 
-        kwargs are to be passed on to ``LegacySurveyData``, other arguments are specific to ``LegacySurveySim``.
+        kwargs are to be passed on to ``LegacySurveyData``-inherited classes, other arguments are specific to ``BaseSimSurvey``.
         Only ``survey_dir`` must be specified to obtain bricks through ``self.get_brick_by_name(brickname)``.
 
         Parameters
@@ -143,7 +153,7 @@ class LegacySurveySim(LegacySurveyData):
         kwargs : dict, default={}
             Arguments for ``legacypipe.survey.LegacySurveyData``.
         """
-        super(LegacySurveySim, self).__init__(*args,**kwargs)
+        super(BaseSimSurvey, self).__init__(*args,**kwargs)
         self.update_sim(simcat=simcat, sim_stamp=sim_stamp, add_sim_noise=add_sim_noise,
                         image_eq_model=image_eq_model, seed=seed, kwargs_file=kwargs_file)
 
@@ -200,15 +210,22 @@ class LegacySurveySim(LegacySurveyData):
             Path to the specified file (whether or not it exists).
         """
         if filetype == 'randoms':
-            tractor_fn = super(LegacySurveySim,self).find_file('tractor',brick=brick,output=output,**kwargs)
+            tractor_fn = super(BaseSimSurvey,self).find_file('tractor',brick=brick,output=output,**kwargs)
             dirname = os.path.dirname(tractor_fn)
             dirname = os.path.join(os.path.dirname(os.path.dirname(dirname)),'obiwan',os.path.basename(dirname))
             basename = os.path.basename(tractor_fn).replace('tractor','randoms')
             fn = os.path.join(dirname,basename)
             if fn == tractor_fn: # make sure not to overwrite Tractor catalogs
-                raise ValueError('Obiwan random path is the same as Tractor catalog = %s' % tractor_fn)
+                raise ValueError('Obiwan randoms path is the same as Tractor catalog: %s' % tractor_fn)
+        elif filetype == 'ps':
+            sources_fn = super(BaseSimSurvey,self).find_file('ref-sources',brick=brick,output=output,**kwargs)
+            dirname = os.path.dirname(sources_fn)
+            basename = os.path.basename(sources_fn).replace('reference','ps')
+            fn = os.path.join(dirname,basename)
+            if fn == sources_fn: # make sure not to overwrite ref sources catalogs
+                raise ValueError('ps path is the same as reference sources = %s' % sources_fn)
         else:
-            fn = super(LegacySurveySim,self).find_file(filetype,brick=brick,output=output,**kwargs)
+            fn = super(BaseSimSurvey,self).find_file(filetype,brick=brick,output=output,**kwargs)
 
         if brick is None:
             brick = '%(brick)s'
@@ -230,26 +247,31 @@ class LegacySurveySim(LegacySurveyData):
 
         return fn
 
+class LegacySurveySim(BaseSimSurvey,LegacySurveyData):
 
-class CosmosSim(LegacySurveySim,CosmosSurvey):
+    """Extend ``BaseSimSurvey`` with ``LegacySurveyData``."""
+
+    pass
+
+class CosmosSim(BaseSimSurvey,CosmosSurvey):
 
     """
-    Extend ``LegacySurveySim`` with a filter for cosmos CCDs.
+    Extend ``BaseSimSurvey`` with a filter for cosmos CCDs.
 
-    Call with LegacySurveySim arguments plus additional CosmosSurvey argument ``subset``.
+    Call with BaseSimSurvey arguments plus additional CosmosSurvey argument ``subset``.
     """
 
     pass
 
-class DecamSim(LegacySurveySim,DecamSurvey):
+class DecamSim(BaseSimSurvey,DecamSurvey):
 
-    """Extend ``LegacySurveySim`` with a filter for DECam CCDs."""
+    """Extend ``BaseSimSurvey`` with a filter for DECam CCDs."""
 
     pass
 
-class NinetyPrimeMosaicSim(LegacySurveySim,NinetyPrimeMosaic):
+class NinetyPrimeMosaicSim(BaseSimSurvey,NinetyPrimeMosaic):
 
-    """Extend ``LegacySurveySim`` with a filter for mosaic or 90prime CCDs."""
+    """Extend ``BaseSimSurvey`` with a filter for mosaic or 90prime CCDs."""
 
     pass
 
@@ -264,7 +286,7 @@ runs = {
 
 def get_survey(name, **kwargs):
     """
-    Return an instance of the ``LegacySurveySim``-inherited class given by name.
+    Return an instance of the ``BaseSimSurvey``-inherited class given by name.
 
     See ``obiwan.kenobi.runs`` dictionary.
     """

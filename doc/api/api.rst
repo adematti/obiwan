@@ -25,14 +25,8 @@ obiwan.utils module
   :members:
   :show-inheritance:
 
-obiwan.scripts module
-------------------------
-.. automodule:: obiwan.scripts
-  :members: match_tractor_obiwan
-  :show-inheritance:
-
 obiwan.batch module
 ------------------------
-.. automodule:: obiwan.batch
-  :members: task_manager
+.. automodule:: obiwan.batch.task_manager
+  :members:
   :show-inheritance:

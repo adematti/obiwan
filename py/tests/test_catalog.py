@@ -31,13 +31,14 @@ def test_base():
     cat2 = 0
     cat2 += cat + 0
     cat2 = cat2 + cat
-    assert cat2.size==200
+    assert cat2.size == 200
     cat.flux = np.linspace(0.,1.,cat.size)
+    cat.shape_r = np.linspace(0.,1.,cat.size).astype('f4')
     cat2.fill(cat,index_self=100+np.arange(cat.size),index_other=np.arange(cat.size),fields_other=['ra','dec'])
     assert cat2.fields == ['ra','dec']
     cat2.fill(cat,index_self=100+np.arange(cat.size),index_other=np.arange(cat.size))
-    assert 'flux' in cat2
-    assert np.isnan(cat2.flux[:100]).all()
+    assert ('flux' in cat2) and ('shape_r' in cat2)
+    assert np.isnan(cat2.flux[:100]).all() and np.isnan(cat2.shape_r[:100]).all()
     cat2.keep_columns('ra','dec')
     assert cat2.fields == ['ra','dec']
     cat2.delete_columns('ra','dec')
@@ -78,7 +79,9 @@ def test_brick():
     x,y = bricks.get_xy_from_radec([259.91]*2,[18.71]*2,brickname=['2599p187']*2)
     assert (x>=0).all() and (x<=3600).all() and (y>=0).all() and (y<=3600).all()
     x2,y2 = brick.get_xy_from_radec([259.91]*2,[18.71]*2)
-    assert np.allclose(x,x2) and np.allclose(y,y2)
+    assert np.allclose(x2,x) and np.allclose(y2,y)
+    x3,y3 = bricks.get_xy_from_radec([13.42]+[259.91]*2+[97.81],[21.12]+[18.71]*2+[48.51])
+    assert np.allclose(x3[1:-1],x) and np.allclose(y3[1:-1],y)
     with tempfile.TemporaryDirectory() as tmp_dir:
         fn = tmp_dir + '/bricklist.txt'
         brick = bricks.get_by_name(['2599p187']).write_list(fn)

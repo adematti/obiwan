@@ -258,3 +258,51 @@ def test_mzlsbass2():
             sigma = diff*np.sqrt(tractor.get('flux_ivar_%s' % b))
             logger.info('Max flux diff in %s band is %.4f, %.4f sigmas' % (b,diff.max(),sigma.max()))
             assert np.all(sigma < nsigmas)
+
+
+def test_plot_case3():
+
+    surveydir = os.path.join(os.path.dirname(__file__), 'testcase3')
+    outdir = 'out-testcase3-obiwan'
+    os.environ['GAIA_CAT_DIR'] = os.path.join(surveydir, 'gaia')
+    os.environ['GAIA_CAT_VER'] = '2'
+    checkpoint_fn = os.path.join(outdir,'checkpoint.pickle')
+    if os.path.exists(checkpoint_fn):
+        os.unlink(checkpoint_fn)
+    randoms_fn = os.path.join(outdir,'input_randoms.fits')
+    brickname = '2447p120'
+    zoom = [1020,1070,2775,2815]
+    randoms = generate_randoms(brickname,zoom=[1020,1070,2785,2815],mag_range=[19.,20.],shape_r_range=[0.,0.])
+    randoms.writeto(randoms_fn)
+
+    for extra_args in [['--plots','--plot-base',os.path.join(outdir,'brick-%(brick)s')],
+                    ]:
+
+        runbrick.main(args=['--brick', brickname, '--zoom', *map(str,zoom),
+                            '--no-wise', '--force-all', '--no-write',
+                            '--survey-dir', surveydir,
+                            '--ran-fn', randoms_fn,
+                            '--outdir', outdir,
+                            '--seed', 42,
+                            '--force-all',
+                            '--threads', 1] + extra_args)
+
+    from matplotlib import pyplot as plt
+    from obiwan.analysis import ImageAnalysis
+
+    image = ImageAnalysis(outdir,brickname=brickname)
+    image.read_sources(filetype='randoms')
+    filetypes = ['image-jpeg','model-jpeg','resid-jpeg']
+    image.read_image(filetype=filetypes[0],xmin=zoom[0],ymin=zoom[2])
+    slicex,slicey = image.suggest_zooms(boxsize_in_pixels=20,range_observed_injected_in_degree=[0.,1.])[0]
+    #filetypes = ['image','model']
+    fig,lax = plt.subplots(ncols=len(filetypes),sharex=False,sharey=False,figsize=(4*len(filetypes),4),squeeze=False)
+    fig.subplots_adjust(hspace=0.2,wspace=0.2)
+    lax = lax.flatten()
+    for ax,filetype in zip(lax,filetypes):
+        image.read_image(filetype=filetype,xmin=zoom[0],ymin=zoom[2])
+        #print(image.shape)
+        image.set_subimage(slicex,slicey)
+        image.plot(ax)
+        image.plot_sources(ax)
+    utils.savefig(fn=os.path.join(outdir,'injected_sources.png'))

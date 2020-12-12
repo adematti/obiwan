@@ -47,6 +47,14 @@ class BaseCatalog(fits.tabledata):
                 toret._length = len(getattr(toret, name))
         return toret
 
+    @classmethod
+    def from_dict(self, d):
+        """Construct catalog from dictionary of field, array."""
+        self = cls()
+        for key,val in d.items():
+            self.set(key,val)
+        return self
+
     @property
     def size(self):
         """Return ``size = len(self)``."""
@@ -82,8 +90,12 @@ class BaseCatalog(fits.tabledata):
         return self.ones()*np.nan
 
     def full(self,*args,**kwargs):
-        """Call ``np.full size`` with ``shape = len(self)``."""
+        """Call ``np.full`` with ``shape = len(self)``."""
         return np.full(self.size,*args,**kwargs)
+
+    def index(self):
+        """Return zero-starting index."""
+        return np.arange(self.size)
 
     def delete_columns(self, *fields):
         """Delete columns."""
@@ -110,9 +122,11 @@ class BaseCatalog(fits.tabledata):
         other : BaseCatalog
             Catalog to be merged to ``self``.
 
-        index_self : slice, ndarray, default=None
+        index_self : slice, ndarray, str, default=None
             Indices (or bool mask) of ``self`` to fill with ``other``.
             If ``None``, all indices of ``self`` are considered.
+            If `before`, ``other`` columns are added at the beginning of ``self`` columns.
+            If `after`, ``other`` columns are added at the end of ``self`` columns.
 
         index_other : slice, ndarray, default=None
             Indices (or bool mask) of ``other`` to fill ``self``.
@@ -132,13 +146,34 @@ class BaseCatalog(fits.tabledata):
         if fields_other is None:
             fields_other = other.fields
 
+        if isinstance(index_self,str):
+            index_self_ = index_self
+            totalsize = self.size + other.size
+            if index_self == 'before':
+                index_self = slice(0,other.size)
+            if index_self == 'after':
+                index_self = slice(self.size,totalsize)
+            else:
+                raise ValueError('If string, index_self should be either "before" or "after"')
+            for field in self.fields:
+                col_self = self.get(field)
+                col_new = np.zeros(shape=(other.size,)+col_self.shape[1:],dtype=col_self.dtype)
+                if fill_nan and isinstance(col_self[0],np.floating):
+                    col_new[:] = np.nan
+                if index_self_  == 'before':
+                    col_new = np.concatenate([col_new,col_self])
+                elif index_self_  == 'after':
+                    col_new = np.concatenate([col_self,col_new])
+                self.set(field,col_new)
+            self._length = totalsize
+
         for field in fields_other:
             col_other = other.get(field)
             if field in self:
                 col_self = self.get(field)
             else:
                 col_self = np.zeros(shape=(self.size,)+col_other.shape[1:],dtype=col_other.dtype)
-                if fill_nan and isinstance(col_self[0],float):
+                if fill_nan and isinstance(col_self[0],np.floating):
                     col_self[:] = np.nan
             col_self[index_self] = col_other[index_other]
             self.set(field,col_self)
@@ -230,7 +265,7 @@ class SimCatalog(BaseCatalog):
             self.brickname = bricks.get_by_radec(self.ra,self.dec).brickname
 
         if 'id' not in self:
-            self.id = np.arange(len(self))
+            self.id = self.index()
 
         if 'bx' not in self:
             if bricks is None: bricks = BrickCatalog(survey=survey)
@@ -329,7 +364,7 @@ class BrickCatalog(BaseCatalog):
             table = Bricks().to_table()
             super(BrickCatalog,self).__init__(table,use_fitsio=False)
             self.to_np_arrays()
-        assert np.all(self.brickid == 1+np.arange(self.size))
+        assert np.all(self.brickid == 1+self.index())
         self._rowmax = self.brickrow.max()
         self._colmax = self.brickcol.max()
         self._ncols = np.bincount(self.brickrow)
@@ -459,12 +494,10 @@ class BrickCatalog(BaseCatalog):
         isscalar = np.isscalar(ra)
         ra,dec = np.atleast_1d(ra),np.atleast_1d(dec)
         brickname = np.asarray(brickname)
-        bx,by = [],[]
+        bx,by = np.zeros_like(ra),np.zeros_like(dec)
         for brickname_ in np.unique(brickname):
             mask = brickname == brickname_
-            x_,y_ = self.get_xy_from_radec(ra[mask],dec[mask],brickname_)
-            bx.append(x_);by.append(y_)
-        bx,by = np.concatenate(bx),np.concatenate(by)
+            bx[mask],by[mask] = self.get_xy_from_radec(ra[mask],dec[mask],brickname_)
         if isscalar:
             return bx[0],by[0]
         return bx,by

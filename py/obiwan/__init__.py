@@ -10,9 +10,10 @@ Contains:
 
 from .version import __version__
 
-__all__ = ['LegacySurveySim','get_randoms_id','find_file','find_survey_file','find_output_file']
-__all__ += ['BaseCatalog','SimCatalog','BrickCatalog','utils','setup_logging','scripts','batch']
+__all__ = ['LegacySurveySim','get_randoms_id','find_file','find_legacypipe_file','find_obiwan_file']
+__all__ += ['BaseCatalog','SimCatalog','BrickCatalog','RunCatalog','analysis','utils','setup_logging','batch']
 
-from .kenobi import LegacySurveySim,get_randoms_id,find_file,find_survey_file,find_output_file
+from .kenobi import LegacySurveySim,get_randoms_id,find_file,find_legacypipe_file,find_obiwan_file
 from .catalog import BaseCatalog,SimCatalog,BrickCatalog
+from .analysis import RunCatalog
 from .utils import setup_logging

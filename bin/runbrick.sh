@@ -82,8 +82,6 @@ rsname="file${fileid}_rs${rowstart}_skip${skipid}"
 bri=$(echo "$brick" | head -c 3)
 logfn="${outdir}/logs/${bri}/${brick}/${rsname}/${brick}.log"
 mkdir -p "${logfn%/*}"
-psfn="${outdir}/metrics/${bri}/${brick}/${rsname}/ps-${brick}.fits"
-mkdir -p "${psfn%/*}"
 
 echo "Logging to: $logfn"
 echo "Running on $(hostname)"
@@ -108,7 +106,7 @@ python -O obiwan/runbrick.py \
       --fileid "${fileid}" \
       --rowstart "${rowstart}" \
       --skipid "${skipid}" \
-      --ps "${psfn}" \
+      --ps \
       --ps-t0 "$(date "+%s")" \
       $others
       >> "$logfn" 2>&1

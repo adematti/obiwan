@@ -112,8 +112,8 @@ class BaseCatalog(fits.tabledata):
         """
         Fill (or create) columns of ``self`` with those of ``other`` catalog.
 
-        If a column of name ``field`` already exists in ``self``, the values with indices ``index_self``
-        are replaced by those of ``other`` with indices ``index_other``.
+        If a column of name ``field`` already exists in ``self`` (with a shape compatible with that of ``other``),
+        the values with indices ``index_self`` are replaced by those of ``other`` with indices ``index_other``.
         Else, a new column is added to ``self``, with default value given by ``np.zeros()`` (or ``np.nan`` if ``fill_nan``).
         Again, the values with indices ``index_self`` are replaced by those of ``other`` with indices ``index_other``.
 
@@ -122,11 +122,11 @@ class BaseCatalog(fits.tabledata):
         other : BaseCatalog
             Catalog to be merged to ``self``.
 
-        index_self : slice, ndarray, str, default=None
+        index_self : slice, ndarray, string, default=None
             Indices (or bool mask) of ``self`` to fill with ``other``.
             If ``None``, all indices of ``self`` are considered.
-            If `before`, ``other`` columns are added at the beginning of ``self`` columns.
-            If `after`, ``other`` columns are added at the end of ``self`` columns.
+            If `before`, ``other[index_other]`` rows are added at the beginning of ``self``.
+            If `after`, ``other[index_other]`` rows are added at the end of ``self``.
 
         index_other : slice, ndarray, default=None
             Indices (or bool mask) of ``other`` to fill ``self``.
@@ -146,20 +146,24 @@ class BaseCatalog(fits.tabledata):
         if fields_other is None:
             fields_other = other.fields
 
+        other_size = other.get(fields_other[0])[index_other].size
+        def isfloating(dtype):
+            return isinstance(np.zeros(1,dtype=dtype)[0],np.floating)
+
         if isinstance(index_self,str):
             index_self_ = index_self
-            totalsize = self.size + other.size
-            if index_self == 'before':
-                index_self = slice(0,other.size)
-            if index_self == 'after':
+            totalsize = self.size + other_size
+            if index_self_ == 'before':
+                index_self = slice(0,other_size)
+            elif index_self_ == 'after':
                 index_self = slice(self.size,totalsize)
             else:
                 raise ValueError('If string, index_self should be either "before" or "after"')
             for field in self.fields:
                 col_self = self.get(field)
-                col_new = np.zeros(shape=(other.size,)+col_self.shape[1:],dtype=col_self.dtype)
-                if fill_nan and isinstance(col_self[0],np.floating):
-                    col_new[:] = np.nan
+                col_new = np.zeros(shape=(other_size,)+col_self.shape[1:],dtype=col_self.dtype)
+                if fill_nan and isfloating(col_self.dtype):
+                    col_new[...] = np.nan
                 if index_self_  == 'before':
                     col_new = np.concatenate([col_new,col_self])
                 elif index_self_  == 'after':
@@ -169,13 +173,16 @@ class BaseCatalog(fits.tabledata):
 
         for field in fields_other:
             col_other = other.get(field)
-            if field in self:
+            if field in self.fields:
                 col_self = self.get(field)
-            else:
+                if col_self.shape[1:] != col_other.shape[1:]: # other column overrides
+                    self.delete_column(field)
+            if field not in self.fields:
                 col_self = np.zeros(shape=(self.size,)+col_other.shape[1:],dtype=col_other.dtype)
-                if fill_nan and isinstance(col_self[0],np.floating):
-                    col_self[:] = np.nan
+                if fill_nan and isfloating(col_self.dtype):
+                    col_self[...] = np.nan
             col_self[index_self] = col_other[index_other]
+
             self.set(field,col_self)
 
     def copy(self):
@@ -193,10 +200,16 @@ class BaseCatalog(fits.tabledata):
             return False
         if not self.size == other.size:
             return False
+        if self.size == 0:
+            return True
         for field in self.fields:
-            mask = ~np.isnan(self.get(field))
-            if not np.all(self.get(field)[mask] == other.get(field)[mask]):
-                return False
+            if isinstance(self.get(field).flat[0],np.floating):
+                mask = ~np.isnan(self.get(field))
+                if not np.all(self.get(field)[mask] == other.get(field)[mask]):
+                    return False
+            else:
+                if not np.all(self.get(field) == other.get(field)):
+                    return False
         return True
 
     def __radd__(self, other):
@@ -227,7 +240,7 @@ class BaseCatalog(fits.tabledata):
 
     def writeto(self, fn, *args, **kwargs):
         """Save to fn."""
-        logger.info('Wrote %s' % fn)
+        logger.info('Saving catalog to %s.' % fn)
         utils.mkdir(os.path.dirname(fn))
         super(BaseCatalog,self).writeto(fn,*args,**kwargs)
 

@@ -8,15 +8,11 @@ class BaseTaskManager(object):
     """A dumb task manager, that simply iterates through the tasks in series."""
 
     def __enter__(self):
-        """
-        Do nothing.
-        """
+        """Do nothing."""
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        """
-        Do nothing.
-        """
+        """Do nothing."""
         pass
 
     def iterate(self, tasks):

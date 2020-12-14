@@ -34,11 +34,22 @@ def test_base():
     assert cat2.size == 200
     cat.flux = np.linspace(0.,1.,cat.size)
     cat.shape_r = np.linspace(0.,1.,cat.size).astype('f4')
+    cat.type = np.full(cat.size,'DEV')
     cat2.fill(cat,index_self=100+np.arange(cat.size),index_other=np.arange(cat.size),fields_other=['ra','dec'])
     assert cat2.fields == ['ra','dec']
     cat2.fill(cat,index_self=100+np.arange(cat.size),index_other=np.arange(cat.size))
     assert ('flux' in cat2) and ('shape_r' in cat2)
     assert np.isnan(cat2.flux[:100]).all() and np.isnan(cat2.shape_r[:100]).all()
+    cat3 = cat2[slice(0,0)]
+    cat3.fill(cat,index_self='after',index_other=np.arange(cat.size),fields_other=['ra','dec'])
+    assert cat3.size == cat.size
+    assert np.isnan(cat3.flux).all() and np.isnan(cat3.shape_r).all()
+    assert np.all(cat3.ra == cat.ra) and np.all(cat3.dec == cat.dec)
+    cat4 = cat3.copy()
+    cat3.fill(cat,index_self='after',index_other=np.arange(0),fields_other=['ra','dec'])
+    assert cat3 == cat4
+    cat3.fill(cat,index_self='before')
+    assert np.all(cat3.flux[:cat.size] == cat.flux) and np.all(cat3.shape_r[:cat.size] == cat.shape_r)
     cat2.keep_columns('ra','dec')
     assert cat2.fields == ['ra','dec']
     cat2.delete_columns('ra','dec')

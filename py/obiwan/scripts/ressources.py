@@ -1,3 +1,12 @@
+"""
+Script to plot cpu and memory usage.
+
+For details, run::
+
+    python ressources.py --help
+
+"""
+
 import argparse
 import logging
 from matplotlib import pyplot as plt
@@ -10,7 +19,7 @@ def main(args=None):
 
     parser = argparse.ArgumentParser(description='Ressources')
     parser.add_argument('--do', type=str, choices=['single','summary'], default='summary',
-                        help='Pass "single" for a time series for each run; "summary" for summary statistics')
+                        help='Pass "single" for a time series for each run; "summary" for summary statistics of all runs')
     plot_summary_base = 'ressources-summary.png'
     parser.add_argument('--plot-fn', type=str, default=None, help='Plot filename; '\
                         'if --do single, defaults to ps-filename + .png; '\
@@ -25,7 +34,7 @@ def main(args=None):
             if opt.plot_fn is None:
                 plot_fn = find_file(base_dir=opt.output_dir,filetype='ps',brickname=run.brickname,struct='obiwan',**run.kwargs_file)
                 plot_fn = plot_fn[:-len('.fits')] + '.png'
-            else: plot_fn = opt.plot_fn % {**{'outdir':opt.output_dir,'brick':run.brickname},**kwargs_file}
+            else: plot_fn = opt.plot_fn % {**{'outdir':opt.output_dir,'brick':run.brickname},**run.kwargs_file}
             ressource.set_catalog(name='series',filetype='ps')
             if ressource.series == 0:
                 logger.info('No ps file for brick %s, %s; skipping.' % (run.brickname,run.kwargs_file))

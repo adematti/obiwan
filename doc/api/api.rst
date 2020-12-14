@@ -25,6 +25,34 @@ obiwan.utils module
   :members:
   :show-inheritance:
 
+obiwan.analysis module
+------------------------
+.. automodule:: obiwan.analysis
+  :members:
+  :show-inheritance:
+
+obiwan.scripts module
+------------------------
+.. automodule:: obiwan.scripts.check
+  :members:
+  :show-inheritance:
+
+.. automodule:: obiwan.scripts.ressources
+  :members:
+  :show-inheritance:
+
+.. automodule:: obiwan.scripts.merge
+  :members:
+  :show-inheritance:
+
+.. automodule:: obiwan.scripts.match
+  :members:
+  :show-inheritance:
+
+.. automodule:: obiwan.scripts.cutout
+  :members:
+  :show-inheritance:
+
 obiwan.batch module
 ------------------------
 .. automodule:: obiwan.batch.task_manager

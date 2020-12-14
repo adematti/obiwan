@@ -60,7 +60,7 @@ def find_file(base_dir=None, filetype=None, brickname=None, source='obiwan', **k
     Shortcut to ``LegacySurveySim.find_file()``.
 
     base_dir : string, default=None
-        Survey (if ``output==False``) or output (if ``output==True``) directory.
+        **Obiwan** (if ``source == 'obiwan'``) or legacypipe (if ``source == 'legacypipe'``) root file directory.
 
     filetype : string, default=None
         Type of file to find.
@@ -68,8 +68,8 @@ def find_file(base_dir=None, filetype=None, brickname=None, source='obiwan', **k
     brickname : string, default=None
         Brick name.
 
-    source : str, default=`obiwan`
-        If `obiwan`, return an Obiwan output file name, else a legacypipe file name.
+    source : string, default=`obiwan`
+        If 'obiwan', return an **Obiwan** output file name, else a **legacypipe** file name.
 
     kwargs : dict
         Other arguments to file paths (e.g. ``get_randoms_id.keys()``).
@@ -83,7 +83,7 @@ def find_file(base_dir=None, filetype=None, brickname=None, source='obiwan', **k
 
 def find_legacypipe_file(survey_dir, filetype, brickname=None, **kwargs):
     """
-    Return legacypipe file name.
+    Return **legacypipe** file name.
 
     survey_dir : string
         Survey directory.
@@ -101,10 +101,10 @@ def find_legacypipe_file(survey_dir, filetype, brickname=None, **kwargs):
 
 def find_obiwan_file(output_dir, filetype, brickname=None, **kwargs):
     """
-    Return Obiwan output file name.
+    Return **Obiwan** output file name.
 
     output_dir : string
-        Obiwan output directory.
+        **Obiwan** output directory.
 
     filetype : string
         Type of file to find.
@@ -119,12 +119,12 @@ def find_obiwan_file(output_dir, filetype, brickname=None, **kwargs):
 
 class BaseSimSurvey(object):
 
-    """Dumb class with Obiwan attributes for future multiple inheritance."""
+    """Dumb class with **Obiwan** attributes for future multiple inheritance."""
 
     def __init__(self, *args, simcat=None, sim_stamp='tractor', add_sim_noise=False,
                  image_eq_model=False, seed=0, kwargs_file={}, **kwargs):
         """
-        Instantiate a ``BaseSimSurvey`` object.
+        Initialize ``BaseSimSurvey``.
 
         kwargs are to be passed on to ``LegacySurveyData``-inherited classes, other arguments are specific to ``BaseSimSurvey``.
         Only ``survey_dir`` must be specified to obtain bricks through ``self.get_brick_by_name(brickname)``.
@@ -605,7 +605,7 @@ class BaseSimStamp(object):
 
     def __init__(self, tim, **attrs):
         """
-        Instantiate ``BaseSimStamp``.
+        Initialize ``BaseSimStamp``.
 
         Parameters
         ----------

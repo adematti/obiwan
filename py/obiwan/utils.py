@@ -20,7 +20,6 @@ def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode
         logging.root.removeHandler(handler)
     fmt = logging.Formatter(fmt='%(asctime)s %(name)-15s %(levelname)-8s %(message)s',datefmt='%m-%d %H:%M ')
     if filename is not None:
-        stream = None
         mkdir(os.path.dirname(filename))
         handler = logging.FileHandler(filename,mode=filemode)
     else:
@@ -29,6 +28,19 @@ def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode
     logging.basicConfig(level=level,handlers=[handler],**kwargs)
 
 def saveplot(giveax=True):
+    """
+    Decorate plotting methods, to achieve the following behaviour for the decorated method:
+
+    If ``ax`` is provided, add image to ``ax``.
+    Else, if ``fn`` is provided, save image to ``fn``, with arguments ``kwargs_fig``.
+    Else, show image.
+
+    Parameters
+    ----------
+    giveax : bool, default=True
+        If ``True``, provide ``ax`` to decorated method.
+        Else, ``ax`` is not provided.
+    """
     def decorator(func):
         @functools.wraps(func)
         def wrapper(self,ax=None,fn=None,kwargs_fig={},**kwargs):
@@ -121,7 +133,12 @@ def get_parser_args(args=None):
     if isinstance(args,dict):
         toret = []
         for key in args:
-            toret += ['--%s' % key, str(args[key])]
+            toret += ['--%s' % key]
+            if isinstance(args[key],list):
+                toret += [str(arg) for arg in args[key]]
+            else:
+                val = str(args[key])
+                if val: toret += [val]
         return toret
 
     return args

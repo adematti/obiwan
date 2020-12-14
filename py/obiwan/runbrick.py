@@ -143,6 +143,7 @@ def run_brick(opt, survey, **kwargs):
         logger.info('Found %d collisions! You will have to run runbrick.py with --skipid = %d.' % (ncollided,opt.skipid+1))
 
     survey.simcat = simcat[mask_simcat]
+    ran_fn = survey.find_file('randoms',brick=opt.brick,output=True)
 
     if len(survey.simcat) == 0:
         # write catalog to ease run checks
@@ -157,7 +158,6 @@ def run_brick(opt, survey, **kwargs):
     runbrick.run_brick(opt.brick, survey, **kwargs)
     simcat[mask_simcat] = survey.simcat
 
-    ran_fn = survey.find_file('randoms',brick=opt.brick,output=True)
     simcat.writeto(ran_fn,header=vars(opt))
 
 

@@ -1,9 +1,18 @@
+"""
+Script to match catalogs of input and output sources.
+
+For details, run::
+
+    python match.py --help
+
+"""
+
 import os
 import argparse
 import logging
 from matplotlib import pyplot as plt
-from obiwan.analysis import MatchAnalysis,RunCatalog,utils
-from obiwan import find_file,utils,setup_logging
+from obiwan.analysis import MatchAnalysis,RunCatalog
+from obiwan import utils,setup_logging
 
 logger = logging.getLogger('match')
 
@@ -11,23 +20,24 @@ def main(args=None):
 
     parser = argparse.ArgumentParser(description='Match')
     parser.add_argument('--randoms', type=str, default=None,
-                        help='Filename of merged randoms catalog')
+                        help='File name of merged randoms catalog')
     parser.add_argument('--tractor', type=str, default=None,
-                        help='Filename of merged Tractor catalog')
+                        help='File name of merged Tractor catalog')
     parser.add_argument('--tractor-legacypipe', nargs='?', type=str, default=False, const=None,
-                        help='Add legacypipe fitted sources to inject sources in the matching. Load from legacypipe directory or filename if provided.')
+                        help='Add legacypipe fitted sources to the random injected sources for the matching with Obiwan Tractor catalogs. '\
+                        'Load legacypipe fitted sources from legacypipe directory or file name if provided.')
     parser.add_argument('--radius', type=float, default=1.5, help='Matching radius in arcseconds')
     parser.add_argument('--base', type=str, default='input', help='Catalog to be used as base for merging')
-    parser.add_argument('--cat-dir', type=str, default='.', help='Matched catalog directory')
+    parser.add_argument('--cat-dir', type=str, default='.', help='Directory for matched catalog')
     cat_matched_base = 'matched_%(base)s.fits'
-    parser.add_argument('--cat-fn', type=str, nargs='*', default=None, help='Output filename. '\
+    parser.add_argument('--cat-fn', type=str, default=None, help='Output file name. '\
                         'If not provided, defaults to cat-dir/%s' % cat_matched_base)
     plot_hist_base_template = 'hist_output_input.png'
     parser.add_argument('--plot-hist', nargs='?', type=str, default=False, const=True,
-                        help='Plot histograms of difference (output-input) and residuals. If no filename provided, defaults to cats-dir + %s' % plot_hist_base_template)
+                        help='Plot histograms of difference (output-input) and residuals. If no file name provided, defaults to cat-dir + %s' % plot_hist_base_template)
     plot_scatter_base_template = 'scatter_output_input.png'
     parser.add_argument('--plot-scatter', nargs='?', type=str, default=False, const=True,
-                        help='Scatter plot difference (output-input). If no filename provided, defaults to cats-dir/%s' % plot_scatter_base_template)
+                        help='Scatter plot difference (output-input). If no filename provided, defaults to cat-dir/%s' % plot_scatter_base_template)
     parser.add_argument('--plot-fields', type=str, nargs='*', default=['ra','dec','flux_g','flux_r','flux_z'], help='Fields to plot')
     RunCatalog.get_output_parser(parser=parser)
     opt = parser.parse_args(args=utils.get_parser_args(args))
@@ -58,7 +68,7 @@ def main(args=None):
 
     if opt.cat_fn is None:
         opt.cat_fn = os.path.join(opt.cat_dir,cat_matched_base % {'base':opt.base})
-    match.export(base=opt.base,key_input='input',key_output=None,cat_fn=opt.cat_fn)
+    match.export(base=opt.base,key_input='input',key_output=None,write=True,cat_fn=opt.cat_fn)
 
     if opt.plot_hist:
         if not isinstance(opt.plot_hist,str):

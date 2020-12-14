@@ -14,8 +14,6 @@ import os
 import sys
 sys.path.insert(0, os.path.abspath('../py/'))
 
-import sphinx_rtd_theme
-
 # -- General configuration ------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -95,3 +93,5 @@ ultimate_replacements = {
 def setup(app):
     app.add_config_value('ultimate_replacements', {}, True)
     app.connect('source-read',_replace)
+
+autoclass_content = 'both'

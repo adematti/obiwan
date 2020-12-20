@@ -203,13 +203,13 @@ def main(args=None):
     log_fn = optdict.pop('log_fn')
 
     if verbose == 0:
-        level = 'info'
+        level = logging.INFO
     else:
-        level = 'debug'
+        level = logging.DEBUG
 
     setup_logging(level,filename=log_fn)
     # tractor logging is *soooo* chatty
-    logging.getLogger('tractor.engine').setLevel(logging.WARNING)
+    logging.getLogger('tractor.engine').setLevel(level + 10)
 
     if opt.brick is None and opt.radec is None:
         parser.print_help()

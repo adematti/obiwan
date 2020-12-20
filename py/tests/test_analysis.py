@@ -1,11 +1,8 @@
 import os
 import glob
-import logging
 import numpy as np
 from obiwan import *
 from test_runbrick import generate_randoms
-
-setup_logging(logging.WARNING)
 
 survey_dir = os.path.join(os.path.dirname(__file__), 'testcase3')
 output_dir = 'out-testcase3-obiwan'
@@ -179,20 +176,20 @@ def test_match():
             if not fn: fn = os.path.join(all_kwargs['cat-dir'],'scatter_output_input.png')
             assert os.path.isfile(fn)
 
-def test_ressources():
+def test_resources():
 
-    from obiwan.scripts import ressources
+    from obiwan.scripts import resources
     base_kwargs = {'outdir':output_dir,'fileid':0,'skipid':0,'rowstart':0}
     for extra_kwargs in [{},
                         {'do':'summary'},
-                        {'do':'single','plot-fn':os.path.join(output_dir,'single_ressources.png')}]:
+                        {'do':'single','plot-fn':os.path.join(output_dir,'single_resources.png')}]:
         all_kwargs = {**base_kwargs,**extra_kwargs}
-        ressources.main(all_kwargs)
+        resources.main(all_kwargs)
         do = all_kwargs.get('do','summary')
         fn = all_kwargs.get('plot-fn',None)
         if fn is None:
             if do == 'summary':
-                fn = 'ressources-summary.png'
+                fn = 'resources-summary.png'
             if do == 'single':
                 fn = find_file(base_dir=output_dir,filetype='ps',brick=brickname)
                 fn = fn[:-len('.fits')] + '.png'

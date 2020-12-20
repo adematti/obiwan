@@ -10,8 +10,6 @@ from legacypipe.survey import wcs_for_brick
 
 logger = logging.getLogger('obiwan.test_runbrick')
 
-setup_logging(logging.WARNING)
-
 def generate_randoms(brickname, zoom=[0,3600,0,3600], zoom_margin=5, mag_range=[19.,20.], shape_r_range=[0.,1.], size=2, seed=42):
 
     brick = BrickCatalog().get_by_name(brickname)
@@ -72,7 +70,6 @@ def test_simblobs():
 
     survey_dir = os.path.join(os.path.dirname(__file__), 'testcase3')
     output_dir = 'out-testcase3-obiwan'
-    legacypipe_dir = 'out-testcase3-legacypipe'
     os.environ['GAIA_CAT_DIR'] = os.path.join(survey_dir, 'gaia')
     os.environ['GAIA_CAT_VER'] = '2'
     randoms_fn = os.path.join(output_dir,'input_randoms.fits')

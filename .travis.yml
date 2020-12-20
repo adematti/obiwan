@@ -48,7 +48,7 @@ before_script:
     - export DUST_DIR=$HOME/dust
 
 script:
-    - (cd py && coverage run tests/test_runbrick_legacypipe.py && coverage run -m pytest tests/ && coverage combine)
+    - (cd py && coverage run tests/test_runbrick_legacypipe.py > log.out && coverage run -m pytest tests/ && coverage combine)
 
 after_success:
     - (cd py && coveralls)

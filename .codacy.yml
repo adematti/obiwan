@@ -1,0 +1,2 @@
+exclude_paths:
+  - 'py/tests/test_runbrick_legacypipe.py'

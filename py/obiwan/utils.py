@@ -23,7 +23,7 @@ def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode
         mkdir(os.path.dirname(filename))
         handler = logging.FileHandler(filename,mode=filemode)
     else:
-        handler = logging.StreamHandler()
+        handler = logging.StreamHandler(stream=stream)
     handler.setFormatter(fmt)
     logging.basicConfig(level=level,handlers=[handler],**kwargs)
 

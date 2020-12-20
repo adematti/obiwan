@@ -5,11 +5,13 @@ if __name__ == '__main__':
 import os
 import sys
 import time
+import logging
 import tempfile
 import numpy as np
 import fitsio
 #from legacypipe.runbrick import main
 from obiwan.runbrick import main
+from obiwan import setup_logging
 from astrometry.util.fits import fits_table
 
 def rbmain():

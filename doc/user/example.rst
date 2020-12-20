@@ -36,5 +36,5 @@ Enter your **shifter** image, check everything ran, match and plot the compariso
 You can also merge catalogs, plot cpu and memory usage, image cutouts::
 
   python ../py/obiwan/scripts/merge.py --filetype randoms tractor --cat-dir $CSCRATCH/Obiwan/dr9/test/merged --outdir $CSCRATCH/Obiwan/dr9/test
-  python ../py/obiwan/scripts/ressources.py --outdir $CSCRATCH/Obiwan/dr9/test --plot-fn plots/ressources-summary.png
+  python ../py/obiwan/scripts/resources.py --outdir $CSCRATCH/Obiwan/dr9/test --plot-fn plots/resources-summary.png
   python ../py/obiwan/scripts/cutout.py --outdir $CSCRATCH/Obiwan/dr9/test --plot-fn "plots/cutout_%(brickname)s-%(icut)d.png" --ncuts 2

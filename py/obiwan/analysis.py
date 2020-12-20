@@ -883,7 +883,7 @@ class BaseAnalysis(object):
             self.merge_catalogs(filetype=filetype,source=source,add=True,**kwargs_merge)
         self.set(name,self.cats[key])
 
-class RessourceEventAnalysis(BaseAnalysis):
+class ResourceEventAnalysis(BaseAnalysis):
 
     """Class that analyses computing time based on events saved in ``ps`` files."""
 
@@ -1000,14 +1000,14 @@ class RessourceEventAnalysis(BaseAnalysis):
             label = '%d entries' % self.runcat.count_runs(self.events)
             ax.text(0.05,0.95,label,horizontalalignment='left',verticalalignment='top',transform=ax.transAxes,color='k')
 
-class RessourceAnalysis(RessourceEventAnalysis):
+class ResourceAnalysis(ResourceEventAnalysis):
 
-    """Class that extends events-only analyses of ``RessourceEventAnalysis`` with analysis of full time series saved in ``ps`` files."""
+    """Class that extends events-only analyses of ``ResourceEventAnalysis`` with analysis of full time series saved in ``ps`` files."""
 
     @staticmethod
     def process_one_series(series, quantities=['proc_icpu','vsz']):
         """
-        Compute ressources for a single time series, split between the following categories:
+        Compute resources for a single time series, split between the following categories:
         'ps' (the process running `ps`), 'main' (the master process),
         'workers' (non-zero in case of multithreading), 'others' (other processes).
 
@@ -1068,7 +1068,7 @@ class RessourceAnalysis(RessourceEventAnalysis):
 
     def process_all_series(self, quantities=['proc_icpu','vsz']):
         """
-        Compute average ressources for all time series, split between the following categories:
+        Compute average resources for all time series, split between the following categories:
         'ps' (the process running `ps`), 'main' (the master process),
         'workers' (non-zero in case of multithreading), 'others' (other processes).
 
@@ -1129,7 +1129,7 @@ class RessourceAnalysis(RessourceEventAnalysis):
     @utils.saveplot()
     def plot_one_series(self, ax, series=None, events='stage', processes=['main','workers'], kwargs_fig={'figsize':(10,5)}, kwargs_plot={}):
         """
-        Plot ressources for a single time series.
+        Plot resources for a single time series.
 
         Parameters
         ----------
@@ -1182,7 +1182,7 @@ class RessourceAnalysis(RessourceEventAnalysis):
     @utils.saveplot()
     def plot_all_series(self, ax, events='stage', processes=['main','workers'], label_entries=True, kwargs_plot={}):
         """
-        Plot summary ressources for all time series.
+        Plot summary resources for all time series.
 
         Parameters
         ----------

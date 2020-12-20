@@ -20,9 +20,9 @@ Match catalogs
 --------------
 You can match input to output catalogs and plot a comparison with the script :pyobiwan:`scripts/match.py`.
 
-Plot ressources
----------------
-You can plot cpu and memory usage with the script :pyobiwan:`scripts/ressources.py`.
+Plot resources
+--------------
+You can plot cpu and memory usage with the script :pyobiwan:`scripts/resources.py`.
 
 Plot image cutouts
 ------------------

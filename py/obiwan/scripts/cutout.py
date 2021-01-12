@@ -10,33 +10,35 @@ For details, run::
 import os
 import argparse
 import logging
+
 from matplotlib import pyplot as plt
-from obiwan.analysis import ImageAnalysis,RunCatalog
-from obiwan import find_file,utils,setup_logging
+
+from obiwan import RunCatalog,find_file,utils,setup_logging
+from obiwan.analysis import ImageAnalysis
+
 
 logger = logging.getLogger('cutout')
 
+
 def main(args=None):
 
-    parser = argparse.ArgumentParser(description='Cutout')
+    parser = argparse.ArgumentParser(description='Cutout',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--ncuts', type=int, default=1,
                         help='Maximum number of cutouts for each brick run. -1 to ignore')
-    parser.add_argument('--xmin', type=int, default=0,
-                        help='x-coordinate of (0,0) corner')
-    parser.add_argument('--ymin', type=int, default=0,
-                        help='y-coordinate of (0,0) corner')
     plot_base_template = 'cutout-%(brickname)s-%(icut)d.png'
-    parser.add_argument('--plot-fn', type=str, default=None, help='Plot file name; '\
-                        'defaults to coadd-dir/%s' % plot_base_template)
+    parser.add_argument('--plot-fn', type=str, default=None, help='Plot file name; \
+                        defaults to coadd-dir/%s' % plot_base_template)
     RunCatalog.get_output_parser(parser=parser)
     opt = parser.parse_args(args=utils.get_parser_args(args))
     runcat = RunCatalog.from_output_cmdline(opt)
 
     for run in runcat:
-        image = ImageAnalysis(opt.output_dir,brickname=run.brickname,kwargs_file=run.kwargs_file)
-        image.read_sources(filetype='randoms')
+
+        image = ImageAnalysis(base_dir=opt.output_dir,brickname=run.brickname,kwargs_file=run.kwargs_file)
         filetypes = ['image-jpeg','model-jpeg','resid-jpeg']
-        image.read_image(filetype=filetypes[0],xmin=opt.xmin,ymin=opt.ymin)
+        image.read_image(filetype=filetypes[0])
+        image.read_image_wcs()
+        image.read_sources(filetype='randoms')
         slices = image.suggest_zooms()
         if opt.ncuts >= 0:
             slices = slices[:opt.ncuts]
@@ -44,7 +46,7 @@ def main(args=None):
             fig,lax = plt.subplots(ncols=len(filetypes),sharex=False,sharey=False,figsize=(4*len(filetypes),4),squeeze=False)
             fig.subplots_adjust(hspace=0.2,wspace=0.2)
             for ax,filetype in zip(lax[0],filetypes):
-                image.read_image(filetype=filetype,xmin=opt.xmin,ymin=opt.ymin)
+                image.read_image(filetype=filetype)
                 image.set_subimage(slicex,slicey)
                 image.plot(ax)
                 image.plot_sources(ax)
@@ -57,6 +59,7 @@ def main(args=None):
             else:
                 plot_fn = opt.plot_fn % plot_fn_kwargs
             utils.savefig(fn=plot_fn)
+
 
 if __name__ == '__main__':
 

@@ -1,17 +1,39 @@
-"""Convenient functions to handle Obiwan inputs/outputs."""
+"""Convenient functions to handle **Obiwan** inputs/outputs."""
 
 import os
 import sys
 import logging
 import functools
+
 import numpy as np
 from matplotlib import pyplot as plt
 from astrometry.libkd import spherematch
 
+
 logger = logging.getLogger('obiwan.utils')
 
+
 def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode='w', **kwargs):
-    """Set up logging, legacypipe style."""
+    """
+    Set up logging.
+
+    Parameters
+    ----------
+    level : string, int, default=logging.INFO
+        Logging level.
+
+    stream : _io.TextIOWrapper, default=sys.stdout
+        Where to stream.
+
+    filename : string, default=None
+        If not ``None`` stream to file name.
+
+    filemode : string, default='w'
+        Mode to open file, only used if filename is not ``None``.
+
+    kwargs : dict
+        Other arguments for :func:`logging.basicConfig`.
+    """
     # Cannot provide stream and filename kwargs at the same time to logging.basicConfig, so handle different cases
     # Thanks to https://stackoverflow.com/questions/30861524/logging-basicconfig-not-creating-log-file-when-i-run-in-pycharm
     if isinstance(level,str):
@@ -26,6 +48,75 @@ def setup_logging(level=logging.INFO, stream=sys.stdout, filename=None, filemode
         handler = logging.StreamHandler(stream=stream)
     handler.setFormatter(fmt)
     logging.basicConfig(level=level,handlers=[handler],**kwargs)
+
+
+class MonkeyPatching(object):
+    """
+    Class to add attributes to modules, e.g.::
+
+        import module
+        with MonkeyPatching() as mp:
+            mp.add(module,'function',fun)
+            # module.function is fun
+        # module.function is original function if exists
+
+    Attributes
+    ----------
+    _old : dict
+        Dictionary holding original attributes.
+
+    _new : dict
+        Dictionary holding new (temporary) attributes.
+    """
+
+    def __init__(self):
+        """Create internal dictionaries :attr:_old and :attr:_new."""
+        self._old = {}
+        self._new = {}
+
+    def __enter__(self):
+        """Return self."""
+        return self
+
+    def __contains__(self,item):
+        """Return whether the tuple ``(module,name) = item`` has been registered."""
+        return self._new.__contains__(item)
+
+    def __iter__(self):
+        """Iterate through (module,name) tuples."""
+        return self._new.__iter__()
+
+    def keys(self):
+        """Return (module,name) keys."""
+        return self._new.keys()
+
+    def add(self, mod, name, attr):
+        """Add attribute ``attr`` with name ``name`` to module ``mod`` (and save ``mod.name`` if already exists)."""
+        if hasattr(mod,name):
+            self._old[(mod,name)] = getattr(mod,name)
+        self._new[(mod,name)] = attr
+        setattr(mod,name,attr)
+
+    def remove(self, mod, name):
+        """Remove added tie of ``name`` to module ``mod`` and restores the old one if exists."""
+        if (mod,name) not in self:
+            raise KeyError('No attribute %s found in module %s' % (name,mod))
+        del self._new[(mod,name)]
+        if (mod,name) in self._old:
+            setattr(mod,name,self._old[(mod,name)])
+            del self._old[(mod,name)]
+        else:
+            delattr(mod,name)
+
+    def clear(self):
+        """Remove all added (module,name) ties."""
+        for mod,name in list(self.keys()):
+            self.remove(mod,name)
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        """Clean up everything."""
+        self.clear()
+
 
 def saveplot(giveax=True):
     """
@@ -42,8 +133,9 @@ def saveplot(giveax=True):
         Else, ``ax`` is not provided.
     """
     def decorator(func):
+
         @functools.wraps(func)
-        def wrapper(self,ax=None,fn=None,kwargs_fig={},**kwargs):
+        def wrapper(self,ax=None,fn=None,kwargs_fig=None,**kwargs):
             isax = True
             if giveax:
                 if ax is None:
@@ -56,55 +148,31 @@ def saveplot(giveax=True):
                 if ax is None:
                     ax = plt.gca()
             if fn is not None:
+                kwargs_fig = kwargs_fig or {}
                 savefig(fn,**kwargs_fig)
             elif not isax:
                 plt.show()
             return ax
         return wrapper
+
     return decorator
+
 
 def savefig(fn, bbox_inches='tight', pad_inches=0.1, dpi=200, **kwargs):
     """Save matplotlib figure to ``fn``."""
     mkdir(os.path.dirname(fn))
-    logger.info('Saving figure to %s.' % fn)
+    logger.info('Saving figure to %s.',fn)
     plt.savefig(fn,bbox_inches=bbox_inches,pad_inches=pad_inches,dpi=dpi,**kwargs)
     plt.close(plt.gcf())
 
+
 def mkdir(dirnm):
-    """Check if ``dirnm`` exists, if not create it."""
-    try: os.makedirs(dirnm) #MPI...
-    except OSError: return
+    """Try to create ``dirnm`` and catch :class:`OSError`."""
+    try:
+        os.makedirs(dirnm) #MPI...
+    except OSError:
+        return
 
-def get_git_version(dirnm=None):
-    """
-    Run ``git describe`` in the current directory (or given ``dirnm``) and return the result as a string.
-
-    Taken from https://github.com/legacysurvey/legacypipe/blob/master/py/legacypipe/survey.py.
-
-    Parameters
-    ----------
-    dirnm : string
-        If non-None, ``cd`` to the given directory before running ``git describe``.
-
-    Returns
-    -------
-    version : string
-        Git version string.
-    """
-    from astrometry.util.run_command import run_command
-    cmd = ''
-    if dirnm is None:
-        # Get the git version of the legacypipe product
-        import obiwan
-        dirnm = os.path.dirname(obiwan.__file__)
-
-    cmd = "cd '%s' && git describe" % dirnm
-    rtn,version,err = run_command(cmd)
-    if rtn:
-        raise RuntimeError('Failed to get version string (%s): ' % cmd +
-                           version + err)
-    version = version.strip()
-    return version
 
 def get_parser_args(args=None):
     """
@@ -122,7 +190,7 @@ def get_parser_args(args=None):
 
     Notes
     -----
-    All non-strings are converted to strings with ``str``.
+    All non-strings are converted to strings with :func:`str`.
     """
     if isinstance(args,str):
         return args.split()
@@ -143,7 +211,8 @@ def get_parser_args(args=None):
 
     return args
 
-def get_parser_dests(parser, exclude=['help']):
+
+def list_parser_dest(parser, exclude=('help',)):
     """
     Return parser list of ``dest``.
 
@@ -152,7 +221,7 @@ def get_parser_dests(parser, exclude=['help']):
     parser : argparse.ArgumentParser
         Parser.
 
-    exclude : string
+    exclude : list, tuple, default=('help',)
         Brick name.
 
     Returns
@@ -162,7 +231,31 @@ def get_parser_dests(parser, exclude=['help']):
     """
     return [act.dest for act in parser._actions if act.dest not in exclude]
 
-def sample_ra_dec(size=None, radecbox=[0.,360.,-90.,90.], rng=None, seed=None):
+
+def get_parser_action_by_dest(parser, dest):
+    """
+    Return parser action corresponding to ``dest``.
+
+    Parameters
+    ----------
+    parser : argparse.ArgumentParser
+        Parser.
+
+    dest : string
+        Parser ``destination`` argument.
+
+    Returns
+    -------
+    act : argparse._StoreAction
+        Action.
+    """
+    for act in parser._actions:
+        if act.dest == dest:
+            return act
+    return None
+
+
+def sample_ra_dec(size=None, radecbox=(0.,360.,-90.,90.), rng=None, seed=None):
     """
     Sample uniform ra, dec coordinates in ``radecbox``.
 
@@ -173,7 +266,7 @@ def sample_ra_dec(size=None, radecbox=[0.,360.,-90.,90.], rng=None, seed=None):
     size : int, default=None
         Number of objects. If ``None``, only a single tuple ra, dec will be sampled.
 
-    radecbox : list, default=[0.,360.,-90.,90.]
+    radecbox : list, tuple, default=(0.,360.,-90.,90.)
         ramin, ramax, decmin, decmax.
 
     rng : np.random.RandomState, default=None
@@ -204,6 +297,7 @@ def sample_ra_dec(size=None, radecbox=[0.,360.,-90.,90.], rng=None, seed=None):
     dec = 90.-np.rad2deg(np.arccos(cmin+u2*(cmax-cmin)))
 
     return ra, dec
+
 
 def match_radec(ra1, dec1, ra2, dec2, radius_in_degree=None, return_distance=False, notself=False, nearest=True):
     """
@@ -259,7 +353,8 @@ def match_radec(ra1, dec1, ra2, dec2, radius_in_degree=None, return_distance=Fal
 
     if return_distance:
         return index1,index2,distance
-    return index1,index2
+    return index1, index2
+
 
 def mask_collisions(ra, dec, radius_in_degree=5./3600.):
     """
@@ -293,6 +388,7 @@ def mask_collisions(ra, dec, radius_in_degree=5./3600.):
         mask[skip] = True
     return mask
 
+
 def get_radecbox_area(ramin, ramax, decmin, decmax):
     """
     Return area of ra, dec box.
@@ -323,6 +419,7 @@ def get_radecbox_area(ramin, ramax, decmin, decmax):
         return area[0]
     return area
 
+
 def get_shape_e(ba):
     """
     Return ellipticity ``e`` given minor-to-major axis ratio ``ba``.
@@ -343,6 +440,7 @@ def get_shape_e(ba):
     Warning! Corresponds to g in: https://galsim-developers.github.io/GalSim/_build/html/shear.html#
     """
     return (1.-ba)/(1.+ba)
+
 
 def get_shape_e1_e2(ba, phi):
     """
@@ -371,6 +469,7 @@ def get_shape_e1_e2(ba, phi):
     e = get_shape_e(ba)
     return e*np.cos(2*phi), e*np.sin(2*phi)
 
+
 def get_shape_ba(e):
     """
     Return minor-to-major axis ratio ``ba`` given ellipticity ``e``.
@@ -390,6 +489,7 @@ def get_shape_ba(e):
     https://www.legacysurvey.org/dr8/catalogs/
     """
     return (1.-np.abs(e))/(1.+np.abs(e))
+
 
 def get_shape_ba_phi(e1, e2):
     """
@@ -418,6 +518,7 @@ def get_shape_ba_phi(e1, e2):
     ba = get_shape_ba((e1**2+e2**2)**0.5)
     phi = 0.5*np.arctan2(e2,e1) % (2.*np.pi)
     return ba, phi
+
 
 def get_extinction(ra, dec, band=None, camera='DES'):
     """
@@ -457,13 +558,16 @@ def get_extinction(ra, dec, band=None, camera='DES'):
         return toret[0]
     return toret
 
+
 def mag2nano(mag):
-    """Magnitudes to nanomaggies conversion."""
+    """Convert magnitudes to nanomaggies."""
     return 10. ** ((np.asarray(mag) - 22.5) / -2.5)
 
+
 def nano2mag(nano):
-    """Nanomaggies to magnitudes conversion."""
+    """Convert nanomaggies to magnitudes."""
     return 22.5 - 2.5 * np.log10(nano)
+
 
 def match_id(id1,id2):
     """
@@ -503,4 +607,4 @@ def match_id(id1,id2):
     ind2 = np.flatnonzero(sortright1-sortleft1 > 0)
     ind1 = np.flatnonzero(sortright2-sortleft2 > 0)
 
-    return sort1[ind1],sort2[ind2]
+    return sort1[ind1], sort2[ind2]

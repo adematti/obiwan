@@ -1,18 +1,21 @@
 from __future__ import print_function
-if __name__ == '__main__':
-    import matplotlib
-    matplotlib.use('Agg')
 import os
 import sys
 import time
 import logging
+import shutil
 import tempfile
+
 import numpy as np
 import fitsio
-#from legacypipe.runbrick import main
-from obiwan.runbrick import main
-from obiwan import setup_logging
+if __name__ == '__main__':
+    import matplotlib
+    matplotlib.use('Agg')
 from astrometry.util.fits import fits_table
+
+from obiwan import setup_logging
+from obiwan.runbrick import main
+
 
 def rbmain():
     from legacypipe.catalog import read_fits_catalog
@@ -25,7 +28,6 @@ def rbmain():
     from legacypipe.survey import BrickDuck
     #from legacypipe.forced_photom import main as forced_main
     from astrometry.util.file import trymakedirs
-    import shutil
 
     ceres  = 'ceres'  in sys.argv
     psfex  = 'psfex'  in sys.argv

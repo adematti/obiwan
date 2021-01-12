@@ -1,19 +1,21 @@
+"""Task manager that run tasks in series."""
+
 import logging
 import subprocess
 
+
 logger = logging.getLogger('obiwan.task_manager')
 
-class BaseTaskManager(object):
 
+class BaseTaskManager(object):
     """A dumb task manager, that simply iterates through the tasks in series."""
 
     def __enter__(self):
-        """Do nothing."""
+        """Return self."""
         return self
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         """Do nothing."""
-        pass
 
     def iterate(self, tasks):
         """
@@ -53,8 +55,15 @@ class BaseTaskManager(object):
         """
         return [function(*(t if isinstance(t,tuple) else (t,))) for t in tasks]
 
+
 def TaskManager(ntasks=None,**kwargs):
-    """Switch between non-MPI (ntasks=1) and MPI task managers."""
+    """
+    Switch between non-MPI (ntasks=1) and MPI task managers. To be called as::
+
+        with TaskManager(...) as tm:
+            # do stuff
+
+    """
     if ntasks == 1:
         logger.info('Non-MPI task manager')
         self = object.__new__(BaseTaskManager)
@@ -65,11 +74,12 @@ def TaskManager(ntasks=None,**kwargs):
     self.__init__(**kwargs)
     return self
 
+
 def run_shell(command):
     """Run a command in the shell, returning stdout and stderr combined."""
     if isinstance(command,list):
         command = ' '.join(map(str,command))
         print(command)
     output = subprocess.run(command, stdout=subprocess.PIPE,
-                                    stderr=subprocess.STDOUT, shell=True).stdout
+                                    stderr=subprocess.STDOUT, shell=True, check=True).stdout
     return output.decode('utf-8')

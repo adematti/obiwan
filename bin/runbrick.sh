@@ -22,12 +22,14 @@ cd ../py
 
 # Defaults
 outdir=${OUTPUT_DIR}
+legpipedir=${LEGACYPIPE_DIR}
+stage='writecat'
 rowstart=0
 skipid=0
 fileid=0
 threads=1
 # Cmd line arguments
-others=""
+others=()
 
 while [[ $# -gt 0 ]]
 do
@@ -43,6 +45,11 @@ case $key in
   shift # past argument
   shift # past value
   ;;
+  --legpipedir)
+  legpipedir="$2"
+  shift # past argument
+  shift # past value
+  ;;
   --fileid)
   fileid="$2"
   shift # past argument
@@ -55,6 +62,11 @@ case $key in
   ;;
   --skipid)
   skipid="$2"
+  shift # past argument
+  shift # past value
+  ;;
+  --stage)
+  stage="$2"
   shift # past argument
   shift # past value
   ;;
@@ -86,6 +98,16 @@ mkdir -p "${logfn%/*}"
 echo "Logging to: $logfn"
 echo "Running on $(hostname)"
 
+env=($(python obiwan/batch/environment_manager.py --module-dir "/src/" --outdir "$legpipedir" --brick "$brick" --full-pythonpath 2> /dev/null))
+for exp in ${env[@]}
+do
+  export "$exp"
+done
+if [ -z "$env" ]
+then
+  echo "WARNING: Environment not set"
+fi
+
 echo -e "\n\n\n" >> "$logfn"
 echo "-----------------------------------------------------------------------------------------" >> "$logfn"
 echo "PWD: $(pwd)" >> "$logfn"
@@ -101,12 +123,13 @@ echo "--------------------------------------------------------------------------
 
 python -O obiwan/runbrick.py \
       --brick "$brick" \
-      --threads "${threads}" \
       --outdir "${outdir}" \
       --fileid "${fileid}" \
       --rowstart "${rowstart}" \
       --skipid "${skipid}" \
+      --stage "${stage}" \
+      --threads "${threads}" \
       --ps \
       --ps-t0 "$(date "+%s")" \
-      $others
+      "${others[@]}"
       >> "$logfn" 2>&1

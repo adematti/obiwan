@@ -1,4 +1,4 @@
-"""Routines for post-processing."""
+"""Routines for scheduling and post-processing."""
 
 __all__ = ['check','resources','merge','match','cutout']
 

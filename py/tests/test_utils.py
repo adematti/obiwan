@@ -2,28 +2,56 @@ import os
 import tempfile
 import logging
 import argparse
+
 import numpy as np
-from obiwan.utils import *
+
+from obiwan import setup_logging
+from obiwan.utils import (saveplot,MonkeyPatching,get_parser_args,list_parser_dest,get_parser_action_by_dest,
+                            match_id,sample_ra_dec,match_radec,mask_collisions,get_radecbox_area,
+                            get_shape_e1_e2,get_shape_ba_phi,mag2nano,nano2mag,get_extinction)
+
 
 setup_logging(logging.DEBUG)
 
-def test_paths():
-    from obiwan.kenobi import find_file,find_legacypipe_file,find_obiwan_file
-    fn = find_legacypipe_file('tests','bricks',brickname='2599p187',fileid=0,rowstart=0,skipid=0)
-    assert os.path.normpath(fn) == os.path.normpath('tests/survey-bricks.fits.gz')
-    fn2 = find_file('tests','bricks',brickname='2599p187',source='legacypipe',fileid=0,rowstart=0,skipid=0)
-    assert fn2==fn
-    fn = find_obiwan_file('.','randoms',brickname='2599p187',fileid=1,rowstart=2,skipid=3)
-    assert os.path.normpath(fn) == os.path.normpath('./obiwan/259/2599p187/file1_rs2_skip3/randoms-2599p187.fits')
-    fn2 = find_file('.','randoms',brickname='2599p187',source='obiwan',fileid=1,rowstart=2,skipid=3)
-    assert fn2==fn
 
 def test_plots():
     with tempfile.TemporaryDirectory() as tmp_dir:
         @saveplot()
         def plot(self, ax,label='label'):
             ax.plot(np.linspace(0.,1.,10))
-        plot(0,fn=os.path.join(tmp_dir,'plot.png'))
+        fn = os.path.join(tmp_dir,'plot.png')
+        plot(0,fn=fn)
+        assert os.path.isfile(fn)
+
+
+def test_monkey_patching():
+    import obiwan
+    def test():
+        return True
+    def test2():
+        return 'file'
+    with MonkeyPatching() as mp:
+        mp.add(obiwan,'test',test)
+        mp.add(obiwan,'find_file',test2)
+        mp.add(np,'sillyname',test2)
+        assert obiwan.test()
+        assert obiwan.find_file() == 'file'
+        assert np.sillyname()
+        assert hasattr(np,'sillyname')
+        assert (obiwan,'find_file') in mp
+        assert list(mp.keys()) == [(obiwan,'test'),(obiwan,'find_file'),(np,'sillyname')]
+        mp.remove(obiwan,'test')
+        assert list(mp.keys()) == [(obiwan,'find_file'),(np,'sillyname')]
+        assert not hasattr(obiwan,'test')
+        mp.clear()
+        assert list(mp.keys()) == []
+        assert hasattr(obiwan,'find_file')
+        assert not hasattr(np,'sillyname')
+        mp.add(obiwan,'find_file',test)
+        mp.add(obiwan,'find_file2',test2)
+        assert obiwan.find_file()
+    assert not hasattr(obiwan,'find_file2')
+
 
 def test_misc():
 
@@ -39,16 +67,19 @@ def test_misc():
     	help="Force re-running the given stage(s) -- don't read from pickle.")
     group.add_argument('--sim-blobs', action='store_true',
     					help='Process only the blobs that contain simulated sources.')
-    assert get_parser_dests(group) == ['apodize','run','force','sim_blobs']
+    dests = ['apodize','run','force','sim_blobs']
+    assert list_parser_dest(group) == dests
+    for dest in dests:
+        assert get_parser_action_by_dest(parser,dest).dest == dest
     """
     # Works but file not created in pytest...
     with tempfile.TemporaryDirectory() as tmp_dir:
-        tmp_file = os.path.join(tmp_dir,'log.out')
-        setup_logging(logging.INFO,filename=tmp_file)
+        fn = os.path.join(tmp_dir,'log.out')
+        setup_logging(logging.INFO,filename=fn)
         words = 'TESTOBIWAN'
         logger.info(words)
         ok = False
-        with open(tmp_file,'r') as tmp:
+        with open(fn,'r') as tmp:
             for line in tmp.readlines():
                 if words in line:
                     ok = True
@@ -68,6 +99,7 @@ def test_misc():
     ind1,ind2 = match_id(id1,id2)
     assert len(ind1) == len(ind2) and len(ind1) == 3
     assert (id1[ind1] == id2[ind2]).all()
+
 
 def test_radec():
     ramin,ramax,decmin,decmax = 259.9,260.2,18.7,18.8
@@ -90,6 +122,7 @@ def test_radec():
     decfrac = np.diff(np.rad2deg(np.sin(np.deg2rad([decmin,decmax]))),axis=0)
     rafrac = np.diff([ramin,ramax],axis=0)
     assert np.allclose(area,decfrac*rafrac)
+
 
 def test_quantities():
     ba,phi = 0.42,0.69

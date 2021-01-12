@@ -1,3 +1,5 @@
+.. _developer-docker:
+
 Building the Docker image
 =========================
 

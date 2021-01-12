@@ -10,31 +10,36 @@ For details, run::
 import os
 import argparse
 import logging
+
 from matplotlib import pyplot as plt
-from obiwan.analysis import MatchAnalysis,RunCatalog
-from obiwan import utils,setup_logging
+
+from obiwan import RunCatalog,utils,setup_logging
+from obiwan.analysis import CatalogMatching
+
 
 logger = logging.getLogger('match')
 
+
 def main(args=None):
 
-    parser = argparse.ArgumentParser(description='Match')
+    parser = argparse.ArgumentParser(description='Match',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--randoms', type=str, default=None,
                         help='File name of merged randoms catalog')
     parser.add_argument('--tractor', type=str, default=None,
                         help='File name of merged Tractor catalog')
     parser.add_argument('--tractor-legacypipe', nargs='?', type=str, default=False, const=None,
-                        help='Add legacypipe fitted sources to the random injected sources for the matching with Obiwan Tractor catalogs. '\
-                        'Load legacypipe fitted sources from legacypipe directory or file name if provided.')
+                        help='Add legacypipe fitted sources to the random injected sources for the matching with Obiwan Tractor catalogs. \
+                        Load legacypipe fitted sources from legacypipe directory or file name if provided.')
     parser.add_argument('--radius', type=float, default=1.5, help='Matching radius in arcseconds')
     parser.add_argument('--base', type=str, default='input', help='Catalog to be used as base for merging')
     parser.add_argument('--cat-dir', type=str, default='.', help='Directory for matched catalog')
     cat_matched_base = 'matched_%(base)s.fits'
-    parser.add_argument('--cat-fn', type=str, default=None, help='Output file name. '\
-                        'If not provided, defaults to cat-dir/%s' % cat_matched_base)
+    parser.add_argument('--cat-fn', type=str, default=None, help='Output file name. \
+                        If not provided, defaults to cat-dir/%s' % cat_matched_base)
     plot_hist_base_template = 'hist_output_input.png'
     parser.add_argument('--plot-hist', nargs='?', type=str, default=False, const=True,
-                        help='Plot histograms of difference (output-input) and residuals. If no file name provided, defaults to cat-dir + %s' % plot_hist_base_template)
+                        help='Plot histograms of difference (output-input) and residuals. \
+                            If no file name provided, defaults to cat-dir + %s' % plot_hist_base_template)
     plot_scatter_base_template = 'scatter_output_input.png'
     parser.add_argument('--plot-scatter', nargs='?', type=str, default=False, const=True,
                         help='Scatter plot difference (output-input). If no filename provided, defaults to cat-dir/%s' % plot_scatter_base_template)
@@ -44,15 +49,15 @@ def main(args=None):
 
     if any([getattr(opt,filetype) is None for filetype in ['randoms','tractor','tractor_legacypipe']]):
         runcat = RunCatalog.from_output_cmdline(opt)
-        match = MatchAnalysis(base_dir=opt.output_dir,runcat=runcat)
+        match = CatalogMatching(base_dir=opt.output_dir,runcat=runcat)
     else:
-        match = MatchAnalysis()
+        match = CatalogMatching()
 
     for filetype in ['randoms','tractor']:
         cat_fn = getattr(opt,filetype)
         if cat_fn is not None:
             cat = match.read_catalog(cat_fn=cat_fn,filetype=filetype,source='obiwan')
-            match.runcat = RunCatalog.from_catalog(cat)
+            match.runcat = RunCatalog.from_catalog(cat,stages='writecat')
     if opt.tractor_legacypipe is None:
         add_input_tractor = True
     elif not opt.tractor_legacypipe:
@@ -79,12 +84,12 @@ def main(args=None):
             try:
                 match.plot_hist(ax,field=field,divide_uncer=False,kwargs_xedges={'quantiles':[0.01,0.99]})
             except KeyError:
-                logger.warning('Could not plot %s bias.' % field)
+                logger.warning('Could not plot %s bias.',field)
         for ax,field in zip(lax[1],opt.plot_fields):
             try:
                 match.plot_hist(ax,field=field,divide_uncer=True,kwargs_xedges={'quantiles':[0.01,0.99]})
             except KeyError:
-                logger.warning('Could not plot %s residual.' % field)
+                logger.warning('Could not plot %s residual.',field)
         utils.savefig(fn=opt.plot_hist)
 
     if opt.plot_scatter:
@@ -95,6 +100,7 @@ def main(args=None):
         for ax,field in zip(lax,opt.plot_fields):
             match.plot_scatter(ax,field=field,diagonal=True,kwargs_xlim={'quantiles':[0.01,0.99]},kwargs_ylim={'quantiles':[0.01,0.99]},square=True)
         utils.savefig(fn=opt.plot_scatter)
+
 
 if __name__ == '__main__':
 

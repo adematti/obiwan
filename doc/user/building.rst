@@ -4,13 +4,13 @@ Building
 ========
 
 The software stack is rather complicated. **Obiwan** is a wrapper around **legacypipe**, which has many dependences.
-So there are two methods for installing everything, **Docker** and from scratch.
+So there are two methods for installing everything, Docker and from scratch.
 
 Obiwan with Docker
 ------------------
 
-**Docker** is the preferred method, as **Obiwan** can be run from a laptop and NERSC using the same **Docker** image.
-The **Docker** image is available on :dockerroot:`Docker Hub <>`.
+Docker is the preferred method, as **Obiwan** can be run from a laptop and NERSC using the same Docker image.
+The Docker image is available on :dockerroot:`Docker Hub <>`.
 
 On your laptop
 ^^^^^^^^^^^^^^
@@ -46,7 +46,7 @@ In interactive mode::
 
 .. note::
 
-  For further information on **shifter**, see `shifter docs`_.
+  For further information on shifter, see `shifter docs`_.
 
 Obiwan from scratch
 -------------------

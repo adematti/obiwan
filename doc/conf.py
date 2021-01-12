@@ -13,6 +13,8 @@
 import os
 import sys
 sys.path.insert(0, os.path.abspath('../py/'))
+sys.path.insert(0, os.path.abspath('../py/obiwan'))
+from version import __version__,__docker_image__
 
 # -- General configuration ------------------------------------------------
 
@@ -37,8 +39,6 @@ copyright = '2020, Hui Kong, Kaylan Burleigh, John Moustakas, Arnaud de Mattia'
 author = 'Hui Kong, Kaylan Burleigh, John Moustakas, Arnaud de Mattia'
 
 # The full version, including alpha/beta/rc tags
-sys.path.insert(0, os.path.abspath('../py/obiwan'))
-from version import __version__,__docker_image__
 release = __version__
 
 html_theme = 'sphinx_rtd_theme'
@@ -84,6 +84,7 @@ def _replace(app, docname, source):
         result = result.replace(key, app.config.ultimate_replacements[key])
     source[0] = result
 
+
 ultimate_replacements = {
     '{dockerimage}' : __docker_image__,
     '{legacysurveyroot}' : legacysurvey_root,
@@ -93,5 +94,6 @@ ultimate_replacements = {
 def setup(app):
     app.add_config_value('ultimate_replacements', {}, True)
     app.connect('source-read',_replace)
+
 
 autoclass_content = 'both'

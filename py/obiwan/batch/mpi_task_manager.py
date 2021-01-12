@@ -1,18 +1,22 @@
-"""Script taken from nbodykit: https://github.com/bccp/nbodykit/tree/master/nbodykit."""
+"""
+Task manager that distributes tasks over MPI processes.
+
+Taken from https://github.com/bccp/nbodykit/blob/master/nbodykit/__init__.py
+and https://github.com/bccp/nbodykit/blob/master/nbodykit/batch.py.
+"""
 
 import os
 import traceback
 import logging
 import warnings
-import numpy
-from mpi4py import MPI
 from contextlib import contextmanager
 
-"""Taken from: https://github.com/bccp/nbodykit/blob/master/nbodykit/__init__.py."""
+import numpy
+from mpi4py import MPI
+
 
 class CurrentMPIComm(object):
-
-    """A class to faciliate getting and setting the current MPI communicator."""
+    """Class to faciliate getting and setting the current MPI communicator."""
 
     _stack = [MPI.COMM_WORLD]
     logger = logging.getLogger("CurrentMPIComm")
@@ -24,12 +28,14 @@ class CurrentMPIComm(object):
         keyword arguments of ``func``, via the ``comm`` keyword.
         """
         import functools
+
         @functools.wraps(func)
         def wrapped(*args, **kwargs):
             kwargs.setdefault('comm', None)
             if kwargs['comm'] is None:
                 kwargs['comm'] = CurrentMPIComm.get()
             return func(*args, **kwargs)
+
         return wrapped
 
     @classmethod
@@ -64,7 +70,7 @@ class CurrentMPIComm(object):
         """Switch to a new current default MPI communicator."""
         cls._stack.append(comm)
         if comm.rank == 0:
-            cls.logger.info("Entering a current communicator of size %d" % comm.size)
+            cls.logger.info("Entering a current communicator of size %d",comm.size)
         cls._stack[-1].barrier()
 
     @classmethod
@@ -72,12 +78,12 @@ class CurrentMPIComm(object):
         """Restore to the previous current default MPI communicator."""
         comm = cls._stack[-1]
         if comm.rank == 0:
-            cls.logger.info("Leaving current communicator of size %d" % comm.size)
+            cls.logger.info("Leaving current communicator of size %d",comm.size)
         cls._stack[-1].barrier()
         cls._stack.pop()
         comm = cls._stack[-1]
         if comm.rank == 0:
-            cls.logger.info("Restored current communicator to size %d" % comm.size)
+            cls.logger.info("Restored current communicator to size %d",comm.size)
 
     @classmethod
     def get(cls):
@@ -97,8 +103,6 @@ class CurrentMPIComm(object):
         cls._stack[-1] = comm
         cls._stack[-1].barrier()
 
-
-"""Taken from: https://github.com/bccp/nbodykit/blob/master/nbodykit/batch.py."""
 
 def split_ranks(N_ranks, N, include_all=False):
     """
@@ -136,6 +140,7 @@ def split_ranks(N_ranks, N, include_all=False):
             if len(ranks):
                 yield i+1, ranks
 
+
 def enum(*sequential, **named):
     """
     Enumeration values to serve as status tags passed
@@ -143,6 +148,7 @@ def enum(*sequential, **named):
     """
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
+
 
 class MPITaskManager(object):
     """
@@ -230,13 +236,13 @@ class MPITaskManager(object):
         leftover = (self.size - 1) - total_ranks
         if leftover and self.rank == 0:
             args = (self.cpus_per_task, self.size-1, leftover)
-            self.logger.warning("with `cpus_per_task` = %d and %d available rank(s), %d rank(s) will do no work" %args)
+            self.logger.warning("with `cpus_per_task` = %d and %d available rank(s), %d rank(s) will do no work",*args)
             self.logger.warning("set `use_all_cpus=True` to use all available cpus")
 
         # crash if we only have one process or one worker
         if self.size <= self.workers:
             args = (self.size, self.workers+1, self.workers)
-            raise ValueError("only have %d ranks; need at least %d to use the desired %d workers" %args)
+            raise ValueError("only have %d ranks; need at least %d to use the desired %d workers",*args)
 
         # ranks that will do work have a nonzero color now
         self._valid_worker = color > 0
@@ -267,7 +273,6 @@ class MPITaskManager(object):
             raise ValueError("workers are only defined when inside the ``with TaskManager()`` context")
 
     def _get_tasks(self):
-
         """Internal generator that yields the next available task from a worker."""
 
         if self.is_root():
@@ -276,7 +281,7 @@ class MPITaskManager(object):
         # logging info
         if self.comm.rank == 0:
             args = (self.rank, MPI.Get_processor_name(), self.comm.size)
-            self.logger.debug("worker master rank is %d on %s with %d processes available" %args)
+            self.logger.debug("worker master rank is %d on %s with %d processes available",*args)
 
         # continously loop and wait for instructions
         while True:
@@ -314,10 +319,9 @@ class MPITaskManager(object):
             self.basecomm.send(None, dest=0, tag=self.tags.EXIT)
 
         # debug logging
-        self.logger.debug("rank %d process is done waiting" %self.rank)
+        self.logger.debug("rank %d process is done waiting",self.rank)
 
     def _distribute_tasks(self, tasks):
-
         """Internal function that distributes the tasks from the root to the workers."""
 
         if not self.is_root():
@@ -329,7 +333,7 @@ class MPITaskManager(object):
 
         # logging info
         args = (self.workers, ntasks)
-        self.logger.debug("master starting with %d worker(s) with %d total tasks" %args)
+        self.logger.debug("master starting with %d worker(s) with %d total tasks",*args)
 
         # loop until all workers have finished with no more tasks
         while closed_workers < self.workers:
@@ -346,7 +350,7 @@ class MPITaskManager(object):
                 if task_index < ntasks:
                     this_task = [task_index, tasks[task_index]]
                     self.basecomm.send(this_task, dest=source, tag=self.tags.START)
-                    self.logger.debug("sending task `%s` to worker %d" %(str(tasks[task_index]), source))
+                    self.logger.debug("sending task `%s` to worker %d",str(tasks[task_index]),source)
                     task_index += 1
 
                 # all tasks sent -- tell worker to exit
@@ -355,12 +359,12 @@ class MPITaskManager(object):
 
             # store the results from finished tasks
             elif tag == self.tags.DONE:
-                self.logger.debug("received result from worker %d" %source)
+                self.logger.debug("received result from worker %d",source)
 
             # track workers that exited
             elif tag == self.tags.EXIT:
                 closed_workers += 1
-                self.logger.debug("worker %d has exited, closed workers = %d" %(source, closed_workers))
+                self.logger.debug("worker %d has exited, closed workers = %d",source,closed_workers)
 
     def iterate(self, tasks):
         """
@@ -442,19 +446,18 @@ class MPITaskManager(object):
         return [r[1] for r in sorted(results, key=lambda x: x[0])]
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-
         """Exit gracefully by closing and freeing the MPI-related variables."""
 
         if exc_value is not None:
             trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
-            self.logger.error("an exception has occurred on rank %d:\n%s" %(self.rank, trace))
+            self.logger.error("an exception has occurred on rank %d:\n%s",self.rank,trace)
 
             # bit of hack that forces mpi4py to exit all ranks
             # see https://groups.google.com/forum/embed/#!topic/mpi4py/RovYzJ8qkbc
             os._exit(1)
 
         # wait and exit
-        self.logger.debug("rank %d process finished" %self.rank)
+        self.logger.debug("rank %d process finished",self.rank)
         self.basecomm.Barrier()
 
         if self.is_root():

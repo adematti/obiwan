@@ -1,16 +1,14 @@
+.. _developer-documentation:
+
 Documentation
 =============
 
-Please follow `Sphinx style guide`_ when writing the documentation (except for filenames).
+Please follow `Sphinx style guide`_ when writing the documentation (except for file names) and `PEP257`_ for docstrings.
 
 Building
 --------
 
-The documentation can be built from the Docker image, e.g. bind mount your directory ``obiwanabsolutepath``::
-
-  docker run -v obiwanabsolutepath:/homedir/obiwan -it {dockerimage}
-
-Then::
+The documentation can be built in or outside the Docker image::
 
   cd $HOME/obiwan/doc
   make html
@@ -27,5 +25,7 @@ References
 .. target-notes::
 
 .. _`Sphinx style guide`: https://documentation-style-guide-sphinx.readthedocs.io/en/latest/style-guide.html
+
+.. _`PEP257`: https://www.python.org/dev/peps/pep-0257/
 
 .. _`Read the Docs`: https://sphinx-rtd-tutorial.readthedocs.io/en/latest/read-the-docs.html

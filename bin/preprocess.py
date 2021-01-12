@@ -39,11 +39,12 @@ def isELG_colors(gflux=None, rflux=None, zflux=None, south=True, gmarg=0., grmar
 
     return elg
 
+
 def get_truth(truth_fn, south=True):
     """Build truth table."""
     truth = SimCatalog(truth_fn)
     mask = isELG_colors(south=south,gmarg=0.5,grmarg=0.5,rzmarg=0.5,**{'%sflux' % b:utils.mag2nano(truth.get(b)) for b in ['g','r','z']})
-    logger.info('Target selection: %d/%d objects' % (mask.sum(),mask.size))
+    logger.info('Target selection: %d/%d objects',mask.sum(),mask.size)
     truth = truth[mask]
     truth.rename('objid','id_truth')
     truth.rename('rhalf','shape_r')
@@ -53,6 +54,7 @@ def get_truth(truth_fn, south=True):
     truth.sersic[truth.type=='DEV'] = 4
 
     return truth
+
 
 def sample_from_truth(randoms, truth, rng=None, seed=None):
     """Sample random photometry from truth table."""
@@ -77,11 +79,13 @@ def sample_from_truth(randoms, truth, rng=None, seed=None):
 
     return randoms
 
-def write_randoms(truth_fn, randoms_fn, bricknames=[], density=1e3, seed=None, gen_in_brick=True):
+
+def write_randoms(truth_fn, randoms_fn, bricknames=None, density=1e3, seed=None, gen_in_brick=True):
     """Build Obiwan randoms from scratch and truth table."""
+    bricknames = bricknames or []
     rng = np.random.RandomState(seed=seed)
     bricks = BrickCatalog()
-    logger.info('Generating randoms in %s' % bricknames)
+    logger.info('Generating randoms in %s',bricknames)
     if gen_in_brick:
         randoms = 0
         for brickname in bricknames:
@@ -104,21 +108,23 @@ def write_randoms(truth_fn, randoms_fn, bricknames=[], density=1e3, seed=None, g
     mask = np.in1d(randoms.brickname,bricknames)
     randoms = randoms[mask]
     randoms.id = np.arange(randoms.size)
-    logger.info('Generated random catalog of size = %d.' % randoms.size)
+    logger.info('Generated random catalog of size = %d.',randoms.size)
 
     truth = get_truth(truth_fn)
     randoms = sample_from_truth(randoms,truth,rng=rng)
 
     randoms.writeto(randoms_fn)
 
-def write_legacysurvey_randoms(input_fn, truth_fn, randoms_fn, bricknames=[], seed=None):
+
+def write_legacysurvey_randoms(input_fn, truth_fn, randoms_fn, bricknames=None, seed=None):
     """Build Obiwan randoms from legacysurvey randoms and truth table."""
+    bricknames = bricknames or []
     randoms = SimCatalog(input_fn)
-    logger.info('Selecting randoms in %s' % bricknames)
+    logger.info('Selecting randoms in %s',bricknames)
     mask = np.in1d(randoms.brickname,bricknames)
     randoms = randoms[mask]
     randoms.rename('targetid','id')
-    logger.info('Selected random catalog of size = %d.' % randoms.size)
+    logger.info('Selected random catalog of size = %d.',randoms.size)
     randoms.keep_columns('id','ra','dec','maskbits','photsys')
 
     for photsys in ['N','S']:

@@ -10,34 +10,33 @@ For details, run::
 import os
 import argparse
 import logging
-from obiwan.analysis import RunCatalog,BaseAnalysis
-from obiwan import utils,setup_logging
+
+from obiwan import RunCatalog,utils,setup_logging
+from obiwan.analysis import CatalogMerging
+
 
 logger = logging.getLogger('merge')
 
+
 def main(args=None):
-    parser = argparse.ArgumentParser(description='Merge')
-    parser.add_argument('--filetype', type=str, nargs='*', default=[],
-                        help='Filetypes to merge. See obiwan.kenobi.find_file() for details.')
-    parser.add_argument('--source', type=str, choices=['obiwan','legacypipe'], default='obiwan',
-                        help='legacypipe or obiwan file structure?')
+    parser = argparse.ArgumentParser(description='Merge',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--cat-dir', type=str, default='.', help='Directory for merged catalogs')
     cat_base_template = 'merged_%(filetype)s.fits'
     cat_legacypipe_base_template = 'merged_%(filetype)s_legacypipe.fits'
-    parser.add_argument('--cat-fn', type=str, nargs='*', default=[],
-                        help='Output file name. If not provided, defaults to cat-dir/%s if source is legacypipe, else cat-dir/%s.' % (cat_legacypipe_base_template,cat_base_template))
-    RunCatalog.get_output_parser(parser=parser)
+    parser.add_argument('--cat-fn', type=str, default=None,
+                        help='Output file name. If not provided, defaults to cat-dir/%s if source is legacypipe, \
+                        else cat-dir/%s.' % (cat_legacypipe_base_template,cat_base_template))
+    RunCatalog.get_output_parser(parser=parser,add_source=True,add_filetype=True)
     opt = parser.parse_args(args=utils.get_parser_args(args))
-    runcat = RunCatalog.from_output_cmdline(opt,source=opt.source)
-    if opt.source is None:
-        opt.source = ['obiwan']*len(opt.filetype)
-    if not opt.cat_fn:
-        for filetype in opt.filetype:
-            opt.cat_fn.append(os.path.join(opt.cat_dir,(cat_legacypipe_base_template if opt.source == 'legacypipe' else cat_base_template) % {'filetype':filetype}))
-    merge = BaseAnalysis(base_dir=opt.output_dir,runcat=runcat)
+    RunCatalog.set_default_output_cmdline(opt)
+    runcat = RunCatalog.from_output_cmdline(opt)
+    print(runcat.brickname)
+    if opt.cat_fn is None:
+        opt.cat_fn = os.path.join(opt.cat_dir,(cat_legacypipe_base_template if opt.source == 'legacypipe' else cat_base_template) % {'filetype':opt.filetype})
+    merge = CatalogMerging(base_dir=opt.output_dir,runcat=runcat,source=opt.source)
     #for field in runcat.fields: print(field,runcat.get(field))
-    for filetype,cat_fn in zip(opt.filetype,opt.cat_fn):
-        merge.merge_catalogs(filetype,source=opt.source,cat_fn=cat_fn,write=True)
+    merge.merge(opt.filetype,cat_fn=opt.cat_fn,write=True)
+
 
 if __name__ == '__main__':
 

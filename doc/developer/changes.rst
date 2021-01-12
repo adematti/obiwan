@@ -1,5 +1,13 @@
+.. _developer-changes:
+
 Change Log
 ==========
+
+DR9 (2021-01-12)
+------------------
+
+* Post-processing scripts.
+* **legacypipe** version handling for DR9.
 
 2.0.0 (2020-11-10)
 ------------------
@@ -9,7 +17,7 @@ Change Log
 1.3.0 (2020-11-02)
 ------------------
 
-* Version for legacypipe DR9, by Hui Kong
+* Version for legacypipe DR9, by Hui Kong.
 
 1.2.0 (2017-05-11)
 ------------------

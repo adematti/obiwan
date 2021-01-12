@@ -1,8 +1,18 @@
 import os
 import glob
 import numpy as np
-from obiwan import *
+
+from matplotlib import pyplot as plt
+from legacypipe import runbrick as lprunbrick
+
+from obiwan import setup_logging,runbrick,SimCatalog,RunCatalog,get_randoms_id,find_file,utils
+from obiwan.analysis import ImageAnalysis
+from obiwan.scripts import check,merge,match,resources,cutout
 from test_runbrick import generate_randoms
+
+
+setup_logging()
+
 
 survey_dir = os.path.join(os.path.dirname(__file__), 'testcase3')
 output_dir = 'out-testcase3-obiwan'
@@ -11,36 +21,33 @@ randoms_fn = os.path.join(output_dir,'input_randoms.fits')
 brickname = '2447p120'
 zoom = [1020,1070,2775,2815]
 
+
 def test_runbrick():
 
     os.environ['GAIA_CAT_DIR'] = os.path.join(survey_dir, 'gaia')
     os.environ['GAIA_CAT_VER'] = '2'
 
-    from legacypipe import runbrick as lprunbrick
     lprunbrick.main(args=['--brick', brickname, '--zoom', *map(str,zoom),
                         '--no-wise', '--force-all', '--no-write',
                         '--survey-dir', survey_dir,
                         '--outdir', legacypipe_dir,
-                        '--force-all',
                         '--threads', '1'])
 
-    from obiwan import runbrick
     randoms = generate_randoms(brickname,zoom=zoom,mag_range=[19.,20.],shape_r_range=[0.,0.],size=5)
     randoms.writeto(randoms_fn)
 
     runbrick.main(args=['--brick', brickname, '--zoom', *map(str,zoom),
-                        '--no-wise', '--force-all', '--no-write',
+                        '--no-wise', '--force-all',
                         '--survey-dir', survey_dir,
                         '--ran-fn', randoms_fn,
                         '--outdir', output_dir,
                         '--seed', 42,
-                        '--force-all',
                         '--ps',
                         '--threads', 1])
 
+
 def test_check():
 
-    from obiwan.scripts import check
     base_kwargs = {'outdir':output_dir,'brick':brickname}
 
     bricklist_fn = os.path.join(base_kwargs['outdir'],'bricklist.txt')
@@ -50,60 +57,61 @@ def test_check():
     for extra_kwargs in [{},
                         {'outdir':legacypipe_dir,'source':'legacypipe'},
                         {'read':''},
+                        {'stages':['fitblobs','writecat'],'read':''},
                         {'brick':'2447p121'},
                         {'brick':bricklist_fn},
                         {'fileid':3},
                         {'rowstart':3},
                         {'skipid':5,'write':''},
                         {'fileid':3,'write':os.path.join(output_dir,'runlist.txt')}]:
+
         all_kwargs = {**base_kwargs,**extra_kwargs}
-        runs = check.main(all_kwargs)
+        runcat = check.main(all_kwargs)
+
         if (all_kwargs['brick'] in [brickname,bricklist_fn]) and (get_randoms_id.as_dict(**all_kwargs) == get_randoms_id.as_dict()):
-            assert runs.size == 0
+            assert runcat.size == 0
             continue
-        assert runs.size == 1
-        assert np.all(runs.brickname == all_kwargs['brick'])
+        assert runcat.size == 1
+        assert np.all(runcat.brickname == all_kwargs['brick'])
         for key,val in get_randoms_id.as_dict(**all_kwargs).items():
-            assert np.all(runs.get(key) == val)
+            assert np.all(runcat.get(key) == val)
         if 'write' in all_kwargs:
             fn = extra_kwargs['write']
             if not fn: fn = 'runlist.txt'
             runlist = RunCatalog.from_list(fn)
-            assert runlist == runs
+            assert runlist == runcat
             os.remove(fn)
+
 
 def test_merge():
 
-    from obiwan.scripts import merge
     base_kwargs = {'outdir':output_dir,'cat-dir':os.path.join(output_dir,'merged'),'fileid':0,'skipid':0,'rowstart':0}
     for extra_kwargs in [{'outdir':legacypipe_dir,'source':'legacypipe','filetype':'tractor'},
                         {'source':'obiwan','filetype':'tractor'},
-                        {'filetype':['randoms','tractor'],'cat-fn':[os.path.join(base_kwargs['cat-dir'],'merged_randoms.fits'),os.path.join(base_kwargs['cat-dir'],'merged_tractor.fits')]},
+                        {'filetype':'randoms','cat-fn':os.path.join(base_kwargs['cat-dir'],'merged_randoms.fits')},
                         ]:
         all_kwargs = {**base_kwargs,**extra_kwargs}
         merge.main(all_kwargs)
         source = all_kwargs.get('source','obiwan')
-        filetypes = all_kwargs['filetype']
-        if not isinstance(filetypes,list): filetypes = [filetypes]
+        filetype = all_kwargs['filetype']
         if 'cat-fn' in all_kwargs:
-            cats_fn = {filetype:cat_fn for filetype,cat_fn in zip(filetypes,all_kwargs['cat-fn'])}
+            cat_fn = all_kwargs['cat-fn']
+        elif source == 'legacypipe':
+            cat_fn = os.path.join(all_kwargs['cat-dir'],'merged_%s_legacypipe.fits' % filetype)
         else:
-            if source == 'legacypipe':
-                cats_fn = {filetype: os.path.join(all_kwargs['cat-dir'],'merged_%s_legacypipe.fits' % filetype) for filetype in filetypes}
-            else:
-                cats_fn = {filetype: os.path.join(all_kwargs['cat-dir'],'merged_%s.fits' % filetype) for filetype in filetypes}
-        for filetype in filetypes:
-            merged = SimCatalog(cats_fn[filetype])
-            origin = SimCatalog(find_file(base_dir=all_kwargs['outdir'],filetype=filetype,source=source,brickname=brickname,**get_randoms_id.as_dict(**all_kwargs)))
-            if filetype == 'randoms':
-                origin.cut(~origin.collided)
-            assert merged.size == origin.size
-            for field in origin.fields:
-                assert np.all(merged.get(field) == origin.get(field))
+            cat_fn = os.path.join(all_kwargs['cat-dir'],'merged_%s.fits' % filetype)
+        merged = SimCatalog(cat_fn)
+        origin = SimCatalog(find_file(base_dir=all_kwargs['outdir'],filetype=filetype,
+                                        source=source,brickname=brickname,**get_randoms_id.as_dict(**all_kwargs)))
+        if filetype == 'randoms':
+            origin.cut(~origin.collided)
+        assert merged.size == origin.size
+        for field in origin.fields:
+            assert np.all(merged.get(field) == origin.get(field))
+
 
 def test_match():
 
-    from obiwan.scripts import match
     randoms = SimCatalog(find_file(base_dir=output_dir,source='obiwan',filetype='randoms',brickname=brickname))
     output = SimCatalog(find_file(base_dir=output_dir,source='obiwan',filetype='tractor',brickname=brickname))
     base_kwargs = {'outdir':output_dir,'cat-dir':os.path.join(output_dir,'merged'),'fileid':0,'skipid':0,'rowstart':0}
@@ -133,14 +141,15 @@ def test_match():
             all_input.fill(tractor,index_self='after')
         inter_input,inter_output = all_input.match_radec(output,nearest=True,radius_in_degree=radius_in_degree,return_distance=False)
         matched = SimCatalog(fn)
+
         def nanall(tab1,tab2):
             if (tab1.size == 0) and (tab1.size == tab2.size):
                 return True
             if isinstance(tab1.flat[0],np.floating):
                 mask = ~np.isnan(tab1)
                 return np.all(tab1[mask] == tab2[mask])
-            else:
-                return np.all(tab1 == tab2)
+            return np.all(tab1 == tab2)
+
         if base == 'input':
             assert matched.size == all_input.size
             for field in all_input.fields:
@@ -176,9 +185,9 @@ def test_match():
             if not fn: fn = os.path.join(all_kwargs['cat-dir'],'scatter_output_input.png')
             assert os.path.isfile(fn)
 
+
 def test_resources():
 
-    from obiwan.scripts import resources
     base_kwargs = {'outdir':output_dir,'fileid':0,'skipid':0,'rowstart':0}
     for extra_kwargs in [{},
                         {'do':'summary'},
@@ -201,27 +210,26 @@ def test_resources():
 
 def test_cutout():
 
-    from matplotlib import pyplot as plt
-    from obiwan.analysis import ImageAnalysis
-
     image = ImageAnalysis(output_dir,brickname=brickname)
-    image.read_sources(filetype='randoms')
     filetypes = ['image-jpeg','model-jpeg','resid-jpeg']
-    image.read_image(filetype=filetypes[0],xmin=zoom[0],ymin=zoom[2])
+    #image.read_image(filetype=filetypes[0],xmin=zoom[0],ymin=zoom[2])
+    image.read_image(filetype=filetypes[0])
+    image.read_image_wcs()
+    image.read_sources(filetype='randoms')
     slicex,slicey = image.suggest_zooms(boxsize_in_pixels=20,range_observed_injected_in_degree=[0.,1.])[0]
     #filetypes = ['image','model']
     fig,lax = plt.subplots(ncols=len(filetypes),sharex=False,sharey=False,figsize=(4*len(filetypes),4),squeeze=False)
     fig.subplots_adjust(hspace=0.2,wspace=0.2)
     lax = lax.flatten()
+
     for ax,filetype in zip(lax,filetypes):
-        image.read_image(filetype=filetype,xmin=zoom[0],ymin=zoom[2])
+        image.read_image(filetype=filetype)
         image.set_subimage(slicex,slicey)
         image.plot(ax)
         image.plot_sources(ax)
     utils.savefig(fn=os.path.join(output_dir,'injected_sources.png'))
 
-    from obiwan.scripts import cutout
-    base_kwargs = {'outdir':output_dir,'xmin':zoom[0],'ymin':zoom[2]}
+    base_kwargs = {'outdir':output_dir}
     for extra_kwargs in [{},
                         {'ncuts':2,'plot-fn':os.path.join(output_dir,'cutout-%(brickname)s-%(icut)d.png')}]:
         all_kwargs = {**base_kwargs,**extra_kwargs}

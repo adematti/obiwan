@@ -1,9 +1,23 @@
+.. _developer-tests:
+
 Tests
 =====
 
-Tests are located in :root:`py/tests`.
-So far, tests of methods in ``utils.py``, ``catalog.py`` and ``scripts``
-are performed, along with tests of ``runbrick.py`` without randoms, reproducing those
-of `legacypipe <https://github.com/legacysurvey/legacypipe/blob/master/py/test/runbrick_test.py>`_.
+Tests are located in :root:`py/tests`. To perform tests, run in this directory::
 
-These tests are done with **pytest**, exectued by **Travis**, when pushing to **GitHub**.
+  pytest
+
+Please also run separately::
+
+  python test_runbrick_legacypipe.py
+
+This is also executed by `TravisCI`_ and `CircleCI`_, when pushing to GitHub.
+
+References
+----------
+
+.. target-notes::
+
+.. _`TravisCI`: https://travis-ci.org/
+
+.. _`CircleCI`: https://circleci.com/

@@ -37,7 +37,7 @@ obiwan.scripts module
   :members:
   :show-inheritance:
 
-.. automodule:: obiwan.scripts.ressources
+.. automodule:: obiwan.scripts.resources
   :members:
   :show-inheritance:
 
@@ -56,5 +56,9 @@ obiwan.scripts module
 obiwan.batch module
 ------------------------
 .. automodule:: obiwan.batch.task_manager
+  :members:
+  :show-inheritance:
+
+.. automodule:: obiwan.batch.environment_manager
   :members:
   :show-inheritance:

@@ -1,4 +1,4 @@
-FROM legacysurvey/legacypipe:DR9.6.7
+FROM legacysurvey/legacypipe:DR9.6.9
 
 WORKDIR /src/
 
@@ -41,14 +41,26 @@ RUN git clone https://github.com/desihub/desiutil.git desiutil \
   && cd desiutil \
   && python3 setup.py install
 
-RUN rm -rf /src/legacypipe/py/obiwan
-
 # DUST maps
 RUN mkdir -p dust/maps \
   && cd dust/maps \
   && wget -c https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_ngp.fits \
   && wget -c https://portal.nersc.gov/project/cosmo/temp/dstn/travis-ci/maps/SFD_dust_4096_sgp.fits
 ENV DUST_DIR=/src/dust
+
+RUN rm -rf legacypipe/py/obiwan # to avoid having this Obiwan version in the PYTHONPATH 
+
+# legacypipe versions
+RUN for v in \
+  DR9.6.2 \
+  DR9.6.4 \
+  DR9.6.5 \
+  DR9.6.5-4-gbb698724 \
+  DR9.6.6 \
+  DR9.6.7 \
+  DR9.6.7-75-g71be984c \
+  DR9.6.8 \
+  ; do cp -r legacypipe "legacypipe_$v" && cd "legacypipe_$v" && git checkout "tags/$v" && cd .. ; done
 
 COPY . /src/obiwan
 ENV PYTHONPATH /src/obiwan/py:${PYTHONPATH}

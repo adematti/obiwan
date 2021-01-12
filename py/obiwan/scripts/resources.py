@@ -9,35 +9,39 @@ For details, run::
 
 import argparse
 import logging
+
 from matplotlib import pyplot as plt
-from obiwan.analysis import ResourceAnalysis,RunCatalog,utils
-from obiwan import find_file,setup_logging
+
+from obiwan import RunCatalog,find_file,setup_logging,utils
+from obiwan.analysis import ResourceAnalysis
+
 
 logger = logging.getLogger('resources')
 
+
 def main(args=None):
 
-    parser = argparse.ArgumentParser(description='Resources')
+    parser = argparse.ArgumentParser(description='Resources',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--do', type=str, choices=['single','summary'], default='summary',
                         help='Pass "single" for a time series for each run; "summary" for summary statistics of all runs')
     plot_summary_base = 'resources-summary.png'
-    parser.add_argument('--plot-fn', type=str, default=None, help='Plot filename; '\
-                        'if --do single, defaults to ps-filename + .png; '\
-                        'else (--do summary), defaults to %s' % plot_summary_base)
+    parser.add_argument('--plot-fn', type=str, default=None, help='Plot filename; \
+                        if --do single, defaults to ps-filename + .png; \
+                        else (--do summary), defaults to %s' % plot_summary_base)
     RunCatalog.get_output_parser(parser=parser)
     opt = parser.parse_args(args=utils.get_parser_args(args))
     runcat = RunCatalog.from_output_cmdline(opt)
 
     if opt.do == 'single':
         for run in runcat:
-            resource = ResourceAnalysis(base_dir=opt.output_dir,bricknames=run.brickname,kwargs_files=run.kwargs_file)
+            resource = ResourceAnalysis(base_dir=opt.output_dir,bricknames=run.brickname,source='obiwan',kwargs_files=run.kwargs_file)
             if opt.plot_fn is None:
-                plot_fn = find_file(base_dir=opt.output_dir,filetype='ps',brickname=run.brickname,struct='obiwan',**run.kwargs_file)
+                plot_fn = find_file(base_dir=opt.output_dir,filetype='ps',brickname=run.brickname,source='obiwan',**run.kwargs_file)
                 plot_fn = plot_fn[:-len('.fits')] + '.png'
             else: plot_fn = opt.plot_fn % {**{'outdir':opt.output_dir,'brick':run.brickname},**run.kwargs_file}
             resource.set_catalog(name='series',filetype='ps')
             if resource.series == 0:
-                logger.info('No ps file for brick %s, %s; skipping.' % (run.brickname,run.kwargs_file))
+                logger.info('No ps file for brick %s, %s; skipping.',run.brickname,run.kwargs_file)
             else:
                 resource.plot_one_series(fn=plot_fn)
 
@@ -50,6 +54,7 @@ def main(args=None):
         resource.plot_bar(ax=lax[0])
         resource.plot_all_series(ax=lax[1])
         utils.savefig(fn=opt.plot_fn)
+
 
 if __name__ == '__main__':
 

@@ -2,7 +2,7 @@ version: 2.1
 jobs:
   build-from-docker:
     docker:
-      - image: adematti/obiwan:DR9.6.7
+      - image: adematti/obiwan:DR9
     steps:
       - run:
           name: CPU info

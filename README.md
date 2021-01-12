@@ -7,7 +7,7 @@
 
 # Obiwan
 
-**Obiwan** is a Monte Carlo method for adding fake galaxies and stars to Legacy Survey images and re-processing the modified images with [legacypipe](https://github.com/legacysurvey/legacypipe). The pipeline forward models galaxies and stars in the multi-color images by detecting sources with signal-to-noise greater than 6 and minimizing the regularized L2 Loss function for various models for the shapes of stars and galaxies.
+**Obiwan** is a Monte Carlo method for adding fake galaxies and stars to Legacy Survey images and re-processing the modified images with [legacypipe](https://github.com/legacysurvey/legacypipe).
 
 ## Credits
 
@@ -17,11 +17,15 @@ Applied to eBOSS ELG in [Obiwan on eBOSS](https://arxiv.org/abs/2007.08992).
 
 ## Documentation
 
-Documentation (in construction) is hosted on Read the Docs, [Obiwan docs](https://obiwandr9.readthedocs.io/).
+Documentation is hosted on Read the Docs, [Obiwan docs](https://obiwandr9.readthedocs.io/).
 
 ## Installation
 
 See [Obiwan building](https://obiwandr9.readthedocs.io/en/latest/user/building.html).
+
+## Contributing
+
+See [contributing to Obiwan](https://obiwandr9.readthedocs.io/en/latest/developer/contributing.html).
 
 ## License
 
@@ -29,7 +33,7 @@ See [Obiwan building](https://obiwandr9.readthedocs.io/en/latest/user/building.h
 
 ## Requirements
 
-- python 3
-- legacypipe and dependencies
-- desiutil
-- galsim
+-   python 3
+-   legacypipe and dependencies
+-   desiutil
+-   galsim

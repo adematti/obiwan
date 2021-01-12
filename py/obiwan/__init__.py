@@ -4,7 +4,8 @@
 Contains:
 - runbrick.py : **Obiwan** main executable, equivalent of ``legacypipe.runbrick``.
 - kenobi.py : Classes to extend legacypipe.
-- catalog.py : Convenient classes to handle catalogs and bricks.
+- catalog.py : Convenient classes to handle catalogs, bricks and runs.
+- analysis.py : Convenient classes to perform **Obiwan** analysis: image cutouts, catalog merging, catalog matching, computing time
 - utils.py : Convenient functions to handle Obiwan inputs/outputs.
 """
 
@@ -14,6 +15,5 @@ __all__ = ['LegacySurveySim','get_randoms_id','find_file','find_legacypipe_file'
 __all__ += ['BaseCatalog','SimCatalog','BrickCatalog','RunCatalog','analysis','utils','setup_logging','batch']
 
 from .kenobi import LegacySurveySim,get_randoms_id,find_file,find_legacypipe_file,find_obiwan_file
-from .catalog import BaseCatalog,SimCatalog,BrickCatalog
-from .analysis import RunCatalog
+from .catalog import BaseCatalog,SimCatalog,BrickCatalog,RunCatalog
 from .utils import setup_logging

@@ -1,10 +1,12 @@
+.. _user-data-model:
+
 Data model
 ==========
 
 In a nutshell, outputs are written in the following structure::
 
   test_brick
-  |-- logs
+  |-- log
   |   `-- 135
   |       `-- 1351p192
   |           `-- file0_rs0_skip0
@@ -60,10 +62,10 @@ The top level output directory includes the following files:
 
 * The usual six directories: **tractor**, **tractor-i**, **coadd**, **metrics**, **checkpoint**, **logs**
 
-* Monte Carlo simulation metadata directory: *obiwan*
+* Monte Carlo simulation metadata directory: **obiwan**
 
 Subdirectories follow the usual Data Relase format of **.../bri/brick/**, where **bri** is the first three letters of each brick.
-The multiple iteractions per brick are identified by directories named **file[0-9]+_rs[0-9]+_skip[0-9]+**.
+The multiple iterations per brick are identified by directories named **file[0-9]+_rs[0-9]+_skip[0-9]+**.
 
 * **file[0-9]+** is the random file identifier.
 
@@ -78,4 +80,4 @@ The multiple iteractions per brick are identified by directories named **file[0-
 
 The catalog of sources injected into images are stored in e.g. **../obiwan/135/1351p192/randoms-1351p192.fits**.
 The column `collided` identifies collided sources, which were therefore not injected into images.
-Command line arguments to :pyobiwan:`runbrick.py` are saved in the header.
+Command line arguments to :mod:`~obiwan.runbrick` are saved in the header.

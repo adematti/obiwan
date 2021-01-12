@@ -32,6 +32,7 @@
   developer/docker
   developer/documentation
   developer/tests
+  developer/contributing
   developer/changes
 
 .. toctree::
@@ -75,7 +76,7 @@ Just as Obi-Wan Kenobi was the *only hope* in `Star Wars: Episode IV - A New Hop
 Quick start-up
 ==============
 
-For a quick start-up on NERSC, see :ref:`example`.
+For a quick start-up on NERSC, see :ref:`user-example`.
 
 Acknowledgements
 ================

@@ -165,8 +165,8 @@ def test_environment_manager_runlist():
         assert len(env_legacypipe) == len(shorts_environ) + len(keys_version) + len(keys_environ)
         for stage,versions in config['stages']:
             for module,version in versions:
-                if module == 'loegacypipe':
-                    if version == 'DR9.6.2' and stage == 'tims':
+                if module == 'legacypipe':
+                    if stage == 'tims':
                         assert env_legacypipe['LEGPIPEV'] == version
                     else:
                         assert env_legacypipe['VER_%s' % EnvironmentManager.shorts_stage[stage]] == version

@@ -43,7 +43,7 @@ release = __version__
 
 html_theme = 'sphinx_rtd_theme'
 
-autodoc_mock_imports = ['astrometry','tractor','legacypipe','desiutil','galsim']
+autodoc_mock_imports = ['fitsio','galsim','astrometry','tractor','legacypipe','desiutil']
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -69,7 +69,6 @@ docker_root = 'https://hub.docker.com/r/adematti/obiwan/'
 legacysurvey_root = '/global/cfs/cdirs/cosmo/work/legacysurvey/dr9m/'
 
 extlinks = {'root': (git_root + '%s',''),
-            'pyobiwan': (git_root + 'py/obiwan/%s',''),
             'dockerroot': (docker_root + '%s',''),
             'legacypipe': ('https://github.com/legacysurvey/legacypipe/blob/master/','legacypipe')}
 

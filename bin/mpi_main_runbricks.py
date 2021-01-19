@@ -1,4 +1,4 @@
-"""Run directly obiwan.runbrick.main."""
+"""Run :mod:`obiwan.runbrick`."""
 
 import os
 from obiwan import RunCatalog,find_file,runbrick

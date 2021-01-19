@@ -1218,7 +1218,7 @@ class RunCatalog(BaseCatalog):
 
     def mask_cmdline(self, opt):
         """
-        Return mask corresponding to command-line arguments in ``opt``: 'brick', :meth:`~obiwan.kenobi.get_randoms_id.keys()`, 'stages', 'list'.
+        Return mask corresponding to command-line arguments in ``opt``: 'brick', :meth:`~obiwan.kenobi.get_randoms_id.keys`, 'stages', 'list'.
 
         If an argument is not in opt or is ``None``, no mask is applied.
 
@@ -1614,12 +1614,13 @@ class RunCatalog(BaseCatalog):
             runcat.set(key,np.tile([kwargs_file[key] for kwargs_file in kwargs_files],size))
         return runcat
 
-    def __iter__(self):
-        """Iterate through the different runs and attach ``kwargs_file`` and ``stages`` on the fly."""
-        for run in super(RunCatalog,self).__iter__():
-            run.kwargs_file = {key:run.get(key) for key in get_randoms_id.keys()}
-            run.stages = self._list_stages[run.stagesid]
-            yield run
+    def __getitem__(self, item):
+        """Attach ``kwargs_file`` and ``stages`` on-the-fly."""
+        toret = super(RunCatalog,self).__getitem__(item)
+        if np.isscalar(item):
+            toret.kwargs_file = {key:toret.get(key) for key in get_randoms_id.keys()}
+            toret.stages = self._list_stages[toret.stagesid]
+        return toret
 
     def iter_mask(self, cat, fields=None):
         """

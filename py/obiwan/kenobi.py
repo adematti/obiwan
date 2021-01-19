@@ -1,4 +1,4 @@
-"""Classes to extend legacypipe."""
+"""Classes to extend **legacypipe**."""
 
 import os
 import re
@@ -427,7 +427,7 @@ galsim.image._Image = _Image
 
 
 class BaseSimImage(object):
-    """Dumb class that extends :meth:`get_tractor_image` for future multiple inheritance."""
+    """Dumb class that extends :meth:`legacypipe.image.get_tractor_image` for future multiple inheritance."""
 
     def get_tractor_image(self, **kwargs):
 

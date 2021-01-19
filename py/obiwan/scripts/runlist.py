@@ -14,7 +14,7 @@ from obiwan import RunCatalog,get_randoms_id,utils,setup_logging
 from obiwan.batch import EnvironmentManager
 
 
-logger = logging.getLogger('check')
+logger = logging.getLogger('runlist')
 
 
 def main(args=None,force_write=False):

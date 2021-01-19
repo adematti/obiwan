@@ -130,7 +130,7 @@ or with 2 MPI tasks::
 .. note::
 
   By default, :root:`bin/mpi_runbricks.sh` launches :root:`bin/mpi_main_runbricks.py` (which directly runs :mod:`~obiwan.runbrick`).
-  To use :root:`bin/mpi_script_runbricks.sh` (which calls :pyobiwan:`bin/runbrick.sh`) instead, pass the option ``-s``.
+  To use :root:`bin/mpi_script_runbricks.sh` (which calls :root:`bin/runbrick.sh`) instead, pass the option ``-s``.
 
 .. note::
 
